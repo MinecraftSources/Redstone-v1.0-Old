@@ -1,0 +1,35 @@
+package com.rmb938.mn2.docker.nc.entity;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.ArrayList;
+
+public class ServerType extends Entity {
+
+    @Getter
+    @Setter
+    private String name;
+
+    @Getter
+    @Setter
+    private RunType type;
+
+    @Getter
+    @Setter
+    private int players;
+
+    @Getter
+    @Setter
+    private int memory;
+
+    @Getter
+    @Setter
+    private int amount;
+
+    @Getter
+    private ArrayList<Plugin> plugins = new ArrayList<>();
+
+    @Getter
+    private ArrayList<World> worlds = new ArrayList<>();
+}

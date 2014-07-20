@@ -1,53 +1,47 @@
 package com.rmb938.mn2.docker.nc;
 
-import com.mongodb.MongoException;
-import com.mongodb.ServerAddress;
-import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.aerospike.client.Host;
+import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
+import com.rmb938.mn2.docker.db.aerospike.AerospikeDatabase;
+import com.rmb938.mn2.docker.nc.database.PluginLoader;
+import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
 
+@Log4j2
 public class NodeController {
-
-    private static final Logger logger = LogManager.getLogger(NodeController.class.getName());
 
     public static void main(String[] args) {
         new NodeController();
     }
 
-    private MongoDatabase mongoDatabase;
+    private AerospikeDatabase aerospikeDatabase;
 
     public NodeController() {
-        logger.info("Started Node Controller");
+        log.info("Started Node Controller");
 
-        String mongoHosts = System.getenv("MONGO_HOSTS");
-        if (mongoHosts != null) {
-            String mongoDB = System.getenv("MONGO_DB");
-            if (mongoDB != null) {
-                ArrayList<ServerAddress> serverAddresses = new ArrayList<>();
+        String aerospikeHosts = System.getenv("AERO_HOSTS");
+        if (aerospikeHosts != null) {
+            ArrayList<Host> hosts = new ArrayList<>();
 
-                try {
-                   mongoDatabase = new MongoDatabase(serverAddresses, mongoDB);
-                } catch (MongoException ex) {
-                    ex.printStackTrace();
-                    return;
-                }
-            } else {
-                logger.error("The MONGO_DB environment variable must be set");
-                return;
+            for (String host : aerospikeHosts.split(",")) {
+                String[] split = host.split(":");
+                hosts.add(new Host(split[0], Integer.parseInt(split[1])));
             }
+
+            aerospikeDatabase = new AerospikeDatabase(hosts.toArray(new Host[hosts.size()]));
         } else {
-            logger.error("The MONGO_HOSTS environment variable must be set");
+            log.error("The AERO_HOSTS environment variable must be set");
             return;
         }
+
+        ASNamespace namespace = aerospikeDatabase.registerNamespace(new ASNamespace(aerospikeDatabase, "ssd"));
+        PluginLoader pluginLoader = new PluginLoader(namespace);
 
         System.getenv("RABBITMQ_HOSTS");
         System.getenv("RABBITMQ_USERNAME");
         System.getenv("RABBITMQ_PASSWORD");
 
-        System.getenv("REDIS_IP");
-        System.getenv("REDIS_PORT");
     }
 
 }
