@@ -22,6 +22,7 @@ public class WorldLoader extends EntityLoader<World> {
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             World world = new World();
+            world.set_id(_id);
             world.setName((String) dbObject.get("name"));
             world.setFolder((String) dbObject.get("folder"));
             try {

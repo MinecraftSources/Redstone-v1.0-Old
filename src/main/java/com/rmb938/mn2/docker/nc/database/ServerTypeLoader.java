@@ -34,6 +34,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             ServerType serverType = new ServerType();
+            serverType.set_id(_id);
             serverType.setName((String)dbObject.get("name"));
             serverType.setAmount((Integer)dbObject.get("amount"));
             serverType.setMemory((Integer)dbObject.get("memory"));

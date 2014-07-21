@@ -22,6 +22,7 @@ public class PluginLoader extends EntityLoader<Plugin> {
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             Plugin plugin = new Plugin();
+            plugin.set_id(_id);
             plugin.setName((String) dbObject.get("name"));
             plugin.setBaseFolder((String) dbObject.get("baseFolder"));
             plugin.setConfigFolder((String) dbObject.get("configFolder"));

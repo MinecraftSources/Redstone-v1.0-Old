@@ -11,6 +11,6 @@ public abstract class Entity {
 
     @Getter
     @Setter
-    private ObjectId uuid;
+    private ObjectId _id;
 
 }
