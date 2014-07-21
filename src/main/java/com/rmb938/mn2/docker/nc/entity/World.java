@@ -1,6 +1,7 @@
 package com.rmb938.mn2.docker.nc.entity;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 public class World extends Entity {
@@ -15,14 +16,16 @@ public class World extends Entity {
 
     @Getter
     @Setter
-    private boolean persistent;
-
-    @Getter
-    @Setter
-    private String environment;
+    private Environment environment;
 
     @Getter
     @Setter
     private String generator;
+
+    public enum Environment {
+        NORMAL,
+        NETHER,
+        THE_END
+    }
 
 }

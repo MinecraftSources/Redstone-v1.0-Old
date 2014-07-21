@@ -1,14 +1,15 @@
 package com.rmb938.mn2.docker.nc.database;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
-import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
-import com.rmb938.mn2.docker.db.aerospike.ASSet;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.nc.entity.Plugin;
+import com.rmb938.mn2.docker.nc.entity.PluginConfig;
 import com.rmb938.mn2.docker.nc.entity.ServerType;
 import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
+import org.bson.types.ObjectId;
 
 import java.util.AbstractMap;
 import java.util.List;
@@ -21,70 +22,75 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
     private final PluginLoader pluginLoader;
     private final WorldLoader worldLoader;
 
-    public ServerTypeLoader(ASNamespace namespace) {
-        super(namespace.registerSet(new ASSet(namespace, "mn2_server_type")));
-        pluginLoader = new PluginLoader(namespace);
-        worldLoader = new WorldLoader(namespace);
+    public ServerTypeLoader(MongoDatabase db) {
+        super(db, "servertypes");
+        pluginLoader = new PluginLoader(db);
+        worldLoader = new WorldLoader(db);
     }
 
+
     @Override
-    public ServerType loadEntity(UUID uuid) {
-        try {
-            Map.Entry<Key, Record> serverTypeEntry = getSet().getRecord(uuid.toString());
+    public ServerType loadEntity(ObjectId _id) {
+        DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
+        if (dbObject != null) {
+            ServerType serverType = new ServerType();
+            serverType.setName((String)dbObject.get("name"));
+            serverType.setAmount((Integer)dbObject.get("amount"));
+            serverType.setMemory((Integer)dbObject.get("memory"));
+            serverType.setPlayers((Integer)dbObject.get("players"));
 
-            if (serverTypeEntry != null) {
-                ServerType serverType = new ServerType();
-
-                serverType.setUuid(uuid);
-                serverType.setName((String) serverTypeEntry.getValue().getValue("name"));
-                serverType.setPlayers((Integer)serverTypeEntry.getValue().getValue("players"));
-                serverType.setMemory((Integer)serverTypeEntry.getValue().getValue("memory"));
-                serverType.setAmount((Integer)serverTypeEntry.getValue().getValue("amount"));
-
-                Map<?, ?> plugins = (Map<?, ?>) serverTypeEntry.getValue().getValue("plugins");
-                for (Object obj : plugins.keySet()) {
-                    String pluginUUID = (String) obj;
-                    String configUUID = (String) plugins.get(obj);
-                    Plugin plugin = pluginLoader.loadEntity(UUID.fromString(pluginUUID));
-                    if (plugin != null) {
-                        if (plugin.getConfigs().containsKey(UUID.fromString(configUUID))) {
-                            serverType.getPlugins().add(new AbstractMap.SimpleEntry<>(plugin, plugin.getConfigs().get(UUID.fromString(configUUID))));
-                        } else {
-                            log.error("Error loading "+serverType.getName()+" a plugin config is null!");
-                            return null;
-                        }
-                    } else {
-                        log.error("Error loading "+serverType.getName()+" a plugin is null!");
-                        return null;
-                    }
-                }
-
-                List<?> worlds = (List<?>) serverTypeEntry.getValue().getValue("worlds");
-                for (Object obj : worlds) {
-                    String worldUUID = (String) obj;
-                    World world = worldLoader.loadEntity(UUID.fromString(worldUUID));
-                    if (world != null) {
-                        serverType.getWorlds().add(world);
-                    } else {
-                        log.error("Error loading "+serverType.getName()+" a world is null!");
-                        return null;
-                    }
-                }
-
-                World defaultWorld = worldLoader.loadEntity(UUID.fromString((String)serverTypeEntry.getValue().getValue("defaultWorld")));
-                if (defaultWorld != null) {
-                    serverType.setDefaultWorld(defaultWorld);
-                } else {
-                    log.error("Error loading "+serverType.getName()+" default world is null!");
+            BasicDBList plugins = (BasicDBList) dbObject.get("plugins");
+            for (Object obj : plugins) {
+                DBObject dbObj = (DBObject) obj;
+                ObjectId _pluginId = (ObjectId) dbObj.get("_id");
+                Plugin plugin = pluginLoader.loadEntity(_pluginId);
+                if (plugin == null) {
+                    log.error("Error loading plugin for server "+serverType.getName());
                     return null;
                 }
 
-                return serverType;
+                if (plugin.getType() != Plugin.PluginType.BUKKIT) {
+                    log.error("Trying to add Non-Bukkit plugin "+plugin.getName()+" to server "+serverType.getName());
+                    return null;
+                }
+
+                ObjectId _configId = (ObjectId) dbObj.get("_configId");
+                PluginConfig pluginConfig = plugin.getConfigs().get(_configId);
+                if (pluginConfig == null) {
+                    log.error("Plugin config "+_configId+" does not exist for plugin "+plugin.getName());
+                    return null;
+                }
             }
-        } catch (AerospikeException e) {
-            e.printStackTrace();
+
+            BasicDBList worlds = (BasicDBList) dbObject.get("worlds");
+            for (Object obj : worlds) {
+                DBObject dbObj = (DBObject) obj;
+                ObjectId _worldId = (ObjectId) dbObj.get("_worldId");
+                World world = worldLoader.loadEntity(_worldId);
+                if (world == null) {
+                    log.error("Error loading world for server "+serverType.getName());
+                    return null;
+                }
+                serverType.getWorlds().add(world);
+            }
+
+            ObjectId _defaultWorldId = (ObjectId) dbObject.get("_defaultWorldId");
+            World world = worldLoader.loadEntity(_defaultWorldId);
+            if (world == null) {
+                log.error("Error loading default world for server "+serverType.getName());
+                return null;
+            }
+
+            if (world.getEnvironment() != World.Environment.NORMAL) {
+                log.error("Default world has to be normal environment");
+                return null;
+            }
+
+            serverType.setDefaultWorld(world);
+
+            return serverType;
         }
-        log.info("Unknown Server Type "+uuid.toString());
+        log.info("Unknown Server Type "+_id.toString());
         return null;
     }
 

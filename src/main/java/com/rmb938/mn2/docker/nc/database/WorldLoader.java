@@ -1,12 +1,11 @@
 package com.rmb938.mn2.docker.nc.database;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
-import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
-import com.rmb938.mn2.docker.db.aerospike.ASSet;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
+import org.bson.types.ObjectId;
 
 import java.util.Map;
 import java.util.UUID;
@@ -14,31 +13,28 @@ import java.util.UUID;
 @Log4j2
 public class WorldLoader extends EntityLoader<World> {
 
-    public WorldLoader(ASNamespace namespace) {
-        super(namespace.registerSet(new ASSet(namespace, "mn2_world")));
+    public WorldLoader(MongoDatabase db) {
+        super(db, "worlds");
     }
 
     @Override
-    public World loadEntity(UUID uuid) {
-        try {
-            Map.Entry<Key, Record> worldEntry = getSet().getRecord(uuid.toString());
-
-            if (worldEntry != null) {
-                World world = new World();
-
-                world.setUuid(uuid);
-                world.setName((String)worldEntry.getValue().getValue("name"));
-                world.setFolder((String)worldEntry.getValue().getValue("folder"));
-                world.setEnvironment((String)worldEntry.getValue().getValue("environment"));
-                world.setGenerator((String)worldEntry.getValue().getValue("generator"));
-                world.setPersistent((Boolean)worldEntry.getValue().getValue("persistent"));
-
-                return world;
+    public World loadEntity(ObjectId _id) {
+        DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
+        if (dbObject != null) {
+            World world = new World();
+            world.setName((String) dbObject.get("name"));
+            world.setFolder((String) dbObject.get("folder"));
+            try {
+                world.setEnvironment(World.Environment.valueOf((String) dbObject.get("environment")));
+            } catch (Exception ex) {
+                log.error("Invalid environment for world "+world.getName());
+                return null;
             }
-        } catch (AerospikeException e) {
-            e.printStackTrace();
+            world.setGenerator((String)dbObject.get("generator"));
+
+            return world;
         }
-        log.info("Unknown World "+uuid.toString());
+        log.info("Unknown World "+_id.toString());
         return null;
     }
 

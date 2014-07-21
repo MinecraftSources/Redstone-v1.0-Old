@@ -1,62 +1,49 @@
 package com.rmb938.mn2.docker.nc.database;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
-import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
-import com.rmb938.mn2.docker.db.aerospike.ASSet;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
+import com.rmb938.mn2.docker.nc.entity.Player;
 import com.rmb938.mn2.docker.nc.entity.Plugin;
 import com.rmb938.mn2.docker.nc.entity.PluginConfig;
 import lombok.extern.log4j.Log4j2;
-
-import java.util.Map;
-import java.util.UUID;
+import org.bson.types.ObjectId;
 
 @Log4j2
 public class PluginLoader extends EntityLoader<Plugin> {
 
-    public PluginLoader(ASNamespace namespace) {
-        super(namespace.registerSet(new ASSet(namespace, "mn2_plugin")));
+    public PluginLoader(MongoDatabase db) {
+        super(db, "plugins");
     }
 
     @Override
-    public Plugin loadEntity(UUID uuid) {
-        try {
-            Map.Entry<Key, Record> pluginEntry = getSet().getRecord(uuid.toString());
-
-            if (pluginEntry != null) {
-                Plugin plugin = new Plugin();
-
-                plugin.setUuid(uuid);
-                plugin.setName((String) pluginEntry.getValue().getValue("name"));
-                plugin.setBaseFolder((String)pluginEntry.getValue().getValue("baseFolder"));
-                plugin.setFolder((String)pluginEntry.getValue().getValue("folder"));
-                try {
-                    plugin.setType(Plugin.PluginType.valueOf((String) pluginEntry.getValue().getValue("type")));
-                } catch (Exception ex) {
-                    log.error("Error loading plugin "+plugin.getName()+" invalid plugin type!");
-                    return null;
-                }
-
-                Map<?, ?> configList = (Map<?, ?>) pluginEntry.getValue().getValue("configs");
-                for (Object obj : configList.keySet()) {
-                    UUID configUUID = UUID.fromString((String)obj);
-                    Map<?, ?> configInfo = (Map<?, ?>) configList.get(obj);
-                    String configName = (String) configInfo.get("name");
-                    String configLocation = (String) configInfo.get("location");
-                    PluginConfig pluginConfig = new PluginConfig();
-                    pluginConfig.setUuid(configUUID);
-                    pluginConfig.setName(configName);
-                    pluginConfig.setLocation(configLocation);
-                    plugin.getConfigs().put(configUUID, pluginConfig);
-                }
-
-                return plugin;
+    public Plugin loadEntity(ObjectId _id) {
+        DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
+        if (dbObject != null) {
+            Plugin plugin = new Plugin();
+            plugin.setName((String) dbObject.get("name"));
+            plugin.setBaseFolder((String) dbObject.get("baseFolder"));
+            plugin.setConfigFolder((String) dbObject.get("configFolder"));
+            try {
+                plugin.setType(Plugin.PluginType.valueOf((String) dbObject.get("type")));
+            } catch (Exception ex) {
+                log.info("Invalid Plugin Type for plugin "+plugin.getName());
+                return null;
             }
-        } catch (AerospikeException e) {
-            e.printStackTrace();
+
+            BasicDBList configs = (BasicDBList) dbObject.get("configs");
+            for (Object obj : configs) {
+                DBObject dbObj = (DBObject) obj;
+                PluginConfig pluginConfig = new PluginConfig();
+                pluginConfig.setName((String) dbObj.get("name"));
+                pluginConfig.setLocation((String) dbObj.get("location"));
+
+                plugin.getConfigs().put((ObjectId)dbObj.get("_id"), pluginConfig);
+            }
+            return plugin;
         }
-        log.info("Unknown Plugin "+uuid.toString());
+        log.info("Unknown Plugin "+_id.toString());
         return null;
     }
 

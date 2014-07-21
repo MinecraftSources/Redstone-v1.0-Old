@@ -2,6 +2,7 @@ package com.rmb938.mn2.docker.nc.entity;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.bson.types.ObjectId;
 
 import java.util.HashMap;
 import java.util.UUID;
@@ -22,10 +23,10 @@ public class Plugin extends Entity {
 
     @Getter
     @Setter
-    private String folder;
+    private String configFolder;
 
     @Getter
-    private HashMap<UUID, PluginConfig> configs = new HashMap<>();
+    private HashMap<ObjectId, PluginConfig> configs = new HashMap<>();
 
     public enum PluginType {
 

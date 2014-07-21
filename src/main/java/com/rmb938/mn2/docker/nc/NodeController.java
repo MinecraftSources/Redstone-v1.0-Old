@@ -1,11 +1,12 @@
 package com.rmb938.mn2.docker.nc;
 
-import com.aerospike.client.Host;
-import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
-import com.rmb938.mn2.docker.db.aerospike.AerospikeDatabase;
+import com.mongodb.ServerAddress;
+import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import lombok.extern.log4j.Log4j2;
 
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.List;
 
 @Log4j2
 public class NodeController {
@@ -14,27 +15,42 @@ public class NodeController {
         new NodeController();
     }
 
-    private AerospikeDatabase aerospikeDatabase;
+    private MongoDatabase mongoDatabase;
 
     public NodeController() {
         log.info("Started Node Controller");
 
-        String aerospikeHosts = System.getenv("AERO_HOSTS");
-        if (aerospikeHosts != null) {
-            ArrayList<Host> hosts = new ArrayList<>();
+        String hosts = System.getenv("MONGO_HOSTS");
 
-            for (String host : aerospikeHosts.split(",")) {
-                String[] split = host.split(":");
-                hosts.add(new Host(split[0], Integer.parseInt(split[1])));
-            }
-
-            aerospikeDatabase = new AerospikeDatabase(hosts.toArray(new Host[hosts.size()]));
-        } else {
-            log.error("The AERO_HOSTS environment variable must be set");
+        if (hosts == null) {
+            log.error("MONGO_HOSTS is not set.");
             return;
         }
 
-        ASNamespace namespace = aerospikeDatabase.registerNamespace(new ASNamespace(aerospikeDatabase, "ssd"));
+        String db = System.getenv("MONGO_DB");
+
+        if (db == null) {
+            log.error("MONGO_DB is not set.");
+            return;
+        }
+
+        List<ServerAddress> addresses = new ArrayList<>();
+
+        for (String host : hosts.split(",")) {
+            String[] info = host.split(":");
+            try {
+                addresses.add(new ServerAddress(info[0], Integer.parseInt(info[1])));
+            } catch (UnknownHostException e) {
+                log.error("Invalid Mongo Address "+host);
+            }
+        }
+
+        if (addresses.isEmpty()) {
+            log.error("No valid mongo addresses");
+            return;
+        }
+
+        mongoDatabase = new MongoDatabase(null, db);
 
         System.getenv("RABBITMQ_HOSTS");
         System.getenv("RABBITMQ_USERNAME");
