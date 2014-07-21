@@ -3,7 +3,6 @@ package com.rmb938.mn2.docker.nc;
 import com.aerospike.client.Host;
 import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
 import com.rmb938.mn2.docker.db.aerospike.AerospikeDatabase;
-import com.rmb938.mn2.docker.nc.database.PluginLoader;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ public class NodeController {
         }
 
         ASNamespace namespace = aerospikeDatabase.registerNamespace(new ASNamespace(aerospikeDatabase, "ssd"));
-        PluginLoader pluginLoader = new PluginLoader(namespace);
 
         System.getenv("RABBITMQ_HOSTS");
         System.getenv("RABBITMQ_USERNAME");

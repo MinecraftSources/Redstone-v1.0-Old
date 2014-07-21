@@ -3,7 +3,8 @@ package com.rmb938.mn2.docker.nc.entity;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.UUID;
 
 public class Plugin extends Entity {
 
@@ -13,17 +14,24 @@ public class Plugin extends Entity {
 
     @Getter
     @Setter
-    private RunType type;
+    private PluginType type;
 
     @Getter
     @Setter
-    private String git;
+    private String baseFolder;
 
     @Getter
     @Setter
     private String folder;
 
     @Getter
-    private ArrayList<PluginConfig> configs = new ArrayList<>();
+    private HashMap<UUID, PluginConfig> configs = new HashMap<>();
+
+    public enum PluginType {
+
+        BUKKIT,
+        BUNGEE
+
+    }
 
 }

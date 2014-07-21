@@ -4,16 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 public class ServerType extends Entity {
 
     @Getter
     @Setter
     private String name;
-
-    @Getter
-    @Setter
-    private RunType type;
 
     @Getter
     @Setter
@@ -28,7 +25,11 @@ public class ServerType extends Entity {
     private int amount;
 
     @Getter
-    private ArrayList<Plugin> plugins = new ArrayList<>();
+    @Setter
+    private World defaultWorld;
+
+    @Getter
+    private ArrayList<Map.Entry<Plugin, PluginConfig>> plugins = new ArrayList<>();
 
     @Getter
     private ArrayList<World> worlds = new ArrayList<>();

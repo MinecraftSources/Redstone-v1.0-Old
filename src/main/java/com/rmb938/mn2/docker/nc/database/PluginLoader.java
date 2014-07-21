@@ -7,19 +7,16 @@ import com.rmb938.mn2.docker.db.aerospike.ASNamespace;
 import com.rmb938.mn2.docker.db.aerospike.ASSet;
 import com.rmb938.mn2.docker.nc.entity.Plugin;
 import com.rmb938.mn2.docker.nc.entity.PluginConfig;
-import com.rmb938.mn2.docker.nc.entity.RunType;
+import lombok.extern.log4j.Log4j2;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Log4j2
 public class PluginLoader extends EntityLoader<Plugin> {
-
-    private final PluginConfigLoader configLoader;
 
     public PluginLoader(ASNamespace namespace) {
         super(namespace.registerSet(new ASSet(namespace, "mn2_plugin")));
-        configLoader = new PluginConfigLoader(namespace);
     }
 
     @Override
@@ -31,16 +28,27 @@ public class PluginLoader extends EntityLoader<Plugin> {
                 Plugin plugin = new Plugin();
 
                 plugin.setUuid(uuid);
-                plugin.setName((String) pluginEntry.getValue().bins.get("name"));
-                plugin.setGit((String)pluginEntry.getValue().bins.get("git"));
-                plugin.setFolder((String)pluginEntry.getValue().bins.get("folder"));
-                plugin.setType(RunType.valueOf((String)pluginEntry.getValue().bins.get("type")));
+                plugin.setName((String) pluginEntry.getValue().getValue("name"));
+                plugin.setBaseFolder((String)pluginEntry.getValue().getValue("baseFolder"));
+                plugin.setFolder((String)pluginEntry.getValue().getValue("folder"));
+                try {
+                    plugin.setType(Plugin.PluginType.valueOf((String) pluginEntry.getValue().getValue("type")));
+                } catch (Exception ex) {
+                    log.error("Error loading plugin "+plugin.getName()+" invalid plugin type!");
+                    return null;
+                }
 
-                List<?> pluginList = (List<?>) pluginEntry.getValue().getValue("configs");
-                for (Object object : pluginList) {
-                    UUID configUUID = UUID.fromString((String)object);
-                    PluginConfig pluginConfig = configLoader.loadEntity(configUUID);
-                    plugin.getConfigs().add(pluginConfig);
+                Map<?, ?> configList = (Map<?, ?>) pluginEntry.getValue().getValue("configs");
+                for (Object obj : configList.keySet()) {
+                    UUID configUUID = UUID.fromString((String)obj);
+                    Map<?, ?> configInfo = (Map<?, ?>) configList.get(obj);
+                    String configName = (String) configInfo.get("name");
+                    String configLocation = (String) configInfo.get("location");
+                    PluginConfig pluginConfig = new PluginConfig();
+                    pluginConfig.setUuid(configUUID);
+                    pluginConfig.setName(configName);
+                    pluginConfig.setLocation(configLocation);
+                    plugin.getConfigs().put(configUUID, pluginConfig);
                 }
 
                 return plugin;
@@ -48,6 +56,7 @@ public class PluginLoader extends EntityLoader<Plugin> {
         } catch (AerospikeException e) {
             e.printStackTrace();
         }
+        log.info("Unknown Plugin "+uuid.toString());
         return null;
     }
 

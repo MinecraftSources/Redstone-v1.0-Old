@@ -11,7 +11,7 @@ public class World extends Entity {
 
     @Getter
     @Setter
-    private String git;
+    private String folder;
 
     @Getter
     @Setter
