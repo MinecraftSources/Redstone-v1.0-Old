@@ -46,8 +46,8 @@ public class NodeController {
         }
 
         List<ServerAddress> mongoAddresses = new ArrayList<>();
-
         for (String host : hosts.split(",")) {
+
             String[] info = host.split(":");
             try {
                 mongoAddresses.add(new ServerAddress(info[0], Integer.parseInt(info[1])));
@@ -62,6 +62,7 @@ public class NodeController {
             return;
         }
 
+        log.info("Setting up mongo database "+db);
         MongoDatabase mongoDatabase = new MongoDatabase(mongoAddresses, db);
 
         hosts = System.getenv("RABBITMQ_HOSTS");
