@@ -40,7 +40,7 @@ public class MasterLoop implements Runnable {
     @Override
     public void run() {
         while (true) {
-            if (amIMaster() == true) {
+            if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
                         int messages = channel.queueDeclarePassive(serverType.getName()+"-worker").getMessageCount();
@@ -61,6 +61,7 @@ public class MasterLoop implements Runnable {
                             object.put("type", serverType.get_id().toString());
                             try {
                                 channel.basicPublish("", serverType.getName()+"-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                                log.info("Sent server build request "+object);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

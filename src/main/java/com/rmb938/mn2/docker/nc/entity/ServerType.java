@@ -34,4 +34,9 @@ public class ServerType extends Entity {
 
     @Getter
     private ArrayList<World> worlds = new ArrayList<>();
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof ServerType && get_id().equals(((ServerType) obj).get_id());
+    }
 }

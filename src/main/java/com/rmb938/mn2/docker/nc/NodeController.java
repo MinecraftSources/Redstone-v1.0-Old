@@ -101,7 +101,7 @@ public class NodeController {
             return;
         }
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {
             MasterLoop masterLoop = new MasterLoop((ObjectId)dbObject.get("_id"), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader);

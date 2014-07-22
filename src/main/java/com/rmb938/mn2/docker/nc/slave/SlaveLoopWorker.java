@@ -5,11 +5,13 @@ import com.rabbitmq.client.QueueingConsumer;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
 import com.rmb938.mn2.docker.nc.entity.ServerType;
+import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
 import java.io.IOException;
 
+@Log4j2
 public class SlaveLoopWorker implements Runnable {
 
     private final ServerTypeLoader serverTypeLoader;
@@ -31,22 +33,35 @@ public class SlaveLoopWorker implements Runnable {
         this.serverTypeLoader = serverTypeLoader;
     }
 
+    public void stopWorking() {
+        try {
+            channel.basicCancel(consumer.getConsumerTag());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void run() {
-        ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
-        while (serverType != null) {
+        while (true) {
             try {
                 QueueingConsumer.Delivery delivery = consumer.nextDelivery();
+                ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
+                if (serverType == null) {
+                    break;
+                }
 
                 JSONObject object = new JSONObject(delivery.getBody());
+                log.info("Received Server build request "+object);
 
                 channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
             } catch (InterruptedException | IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
+                log.info("Stopping Consumer");
+                break;
             }
         }
         try {
-            channel.basicCancel(consumer.getConsumerTag());
             channel.close();
         } catch (IOException e) {
             e.printStackTrace();

@@ -5,6 +5,10 @@ import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
 import com.rmb938.mn2.docker.nc.entity.ServerType;
 import lombok.extern.log4j.Log4j2;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Log4j2
@@ -22,15 +26,28 @@ public class SlaveLoop implements Runnable {
 
     @Override
     public void run() {
+        Map<ServerType, SlaveLoopWorker> workers = new HashMap<>();
         while(true) {
-            for (ServerType serverType : serverTypeLoader.getTypes()) {
+
+            Iterator<Map.Entry<ServerType, SlaveLoopWorker>> iterator = workers.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<ServerType, SlaveLoopWorker> workerEntry = iterator.next();
+                if (serverTypeLoader.loadEntity(workerEntry.getKey().get_id()) == null) {
+                    workerEntry.getValue().stopWorking();
+                    iterator.remove();
+                }
+            }
+
+            serverTypeLoader.getTypes().stream().filter(serverType -> !workers.containsKey(serverType)).forEach(serverType -> {
                 try {
                     SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, rabbitMQ, serverTypeLoader);
+                    workers.put(serverType, slaveLoopWorker);
                     executorService.submit(slaveLoopWorker);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            }
+            });
+
             try {
                 Thread.sleep(30000);
             } catch (InterruptedException e) {
