@@ -51,6 +51,7 @@ public class NodeController {
             String[] info = host.split(":");
             try {
                 mongoAddresses.add(new ServerAddress(info[0], Integer.parseInt(info[1])));
+                log.info("Added Mongo Address "+host);
             } catch (UnknownHostException e) {
                 log.error("Invalid Mongo Address " + host);
             }
