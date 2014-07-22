@@ -1,5 +1,6 @@
 package com.rmb938.mn2.docker.nc;
 
+import com.mongodb.BasicDBObject;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.MessageProperties;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
@@ -40,6 +41,7 @@ public class MasterLoop implements Runnable {
     @Override
     public void run() {
         while (true) {
+            nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
