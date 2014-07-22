@@ -52,6 +52,7 @@
                                 <includes>
                                     <include>com.rmb938.mn2.docker:MN2Database:*</include>
                                     <include>org.projectlombok:lombok:*</include>
+                                    <include>org.json:json:*</include>
                                 </includes>
                             </artifactSet>
                         </configuration>
@@ -90,6 +91,11 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.14.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20140107</version>
         </dependency>
     </dependencies>
 

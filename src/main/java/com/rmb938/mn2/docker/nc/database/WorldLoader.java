@@ -7,14 +7,11 @@ import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
-import java.util.Map;
-import java.util.UUID;
-
 @Log4j2
 public class WorldLoader extends EntityLoader<World> {
 
     public WorldLoader(MongoDatabase db) {
-        super(db, "worlds");
+        super(db, "World");
     }
 
     @Override

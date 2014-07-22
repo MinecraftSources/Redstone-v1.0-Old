@@ -2,6 +2,7 @@ package com.rmb938.mn2.docker.nc.database;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.nc.entity.Plugin;
@@ -11,10 +12,7 @@ import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
-import java.util.AbstractMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.ArrayList;
 
 @Log4j2
 public class ServerTypeLoader extends EntityLoader<ServerType> {
@@ -23,11 +21,22 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
     private final WorldLoader worldLoader;
 
     public ServerTypeLoader(MongoDatabase db) {
-        super(db, "servertypes");
+        super(db, "ServerType");
         pluginLoader = new PluginLoader(db);
         worldLoader = new WorldLoader(db);
     }
 
+    public ArrayList<ServerType> getTypes() {
+        ArrayList<ServerType> types = new ArrayList<>();
+        DBCursor dbCursor = getDb().findMany(getCollection());
+        while (dbCursor.hasNext()) {
+            ServerType type = loadEntity((ObjectId)dbCursor.next().get("_id"));
+            if (type != null) {
+                types.add(type);
+            }
+        }
+        return types;
+    }
 
     @Override
     public ServerType loadEntity(ObjectId _id) {

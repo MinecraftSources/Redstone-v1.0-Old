@@ -2,13 +2,8 @@ package com.rmb938.mn2.docker.nc.database;
 
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.nc.entity.Entity;
-import lombok.Data;
 import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-
-import java.util.UUID;
 
 public abstract class EntityLoader<T extends Entity> {
 
