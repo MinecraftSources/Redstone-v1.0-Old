@@ -90,22 +90,18 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                     return null;
                 }
                 serverType.getWorlds().add(world);
+
+                boolean defaultWorld = (Boolean) dbObj.get("isDefault");
+                if (defaultWorld) {
+                    serverType.setDefaultWorld(world);
+                }
             }
 
-            log.info("Loading "+serverType.getName()+" default world");
-            ObjectId _defaultWorldId = (ObjectId) dbObject.get("_defaultWorldId");
-            World world = worldLoader.loadEntity(_defaultWorldId);
-            if (world == null) {
-                log.error("Error loading default world for server "+serverType.getName());
+            if (serverType.getDefaultWorld() == null) {
+                log.error("No default world for server type "+serverType.getName());
                 return null;
             }
 
-            if (world.getEnvironment() != World.Environment.NORMAL) {
-                log.error("Default world has to be normal environment");
-                return null;
-            }
-
-            serverType.setDefaultWorld(world);
             log.info("Loaded Type "+serverType.getName());
             return serverType;
         }
