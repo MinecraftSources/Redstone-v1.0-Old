@@ -13,11 +13,15 @@ import org.bson.types.ObjectId;
 public class PluginLoader extends EntityLoader<Plugin> {
 
     public PluginLoader(MongoDatabase db) {
-        super(db, "plugin");
+        super(db, "plugins");
     }
 
     @Override
     public Plugin loadEntity(ObjectId _id) {
+        if (_id == null) {
+            log.error("Error loading plugin. _id null");
+            return null;
+        }
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             Plugin plugin = new Plugin();

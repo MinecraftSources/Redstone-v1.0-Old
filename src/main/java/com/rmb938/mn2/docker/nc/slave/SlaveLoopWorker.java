@@ -23,8 +23,10 @@ public class SlaveLoopWorker implements Runnable {
         _myServerTypeId = serverType.get_id();
         channel = rabbitMQ.getChannel();
         try {
+            log.info("Connecting to Queue "+serverType.getName()+"-worker");
             channel.queueDeclarePassive(serverType.getName()+"-worker");
         } catch (IOException e) {
+            log.info("Creating Queue "+serverType.getName()+"-worker");
             channel.queueDeclare(serverType.getName()+"-worker", true, false, true, null);
         }
         channel.basicQos(1);
@@ -45,9 +47,11 @@ public class SlaveLoopWorker implements Runnable {
     public void run() {
         while (true) {
             try {
+                log.info("Waiting for Delivery");
                 QueueingConsumer.Delivery delivery = consumer.nextDelivery();
                 ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
                 if (serverType == null) {
+                    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
                     break;
                 }
 

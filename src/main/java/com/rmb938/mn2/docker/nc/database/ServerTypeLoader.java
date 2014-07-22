@@ -21,7 +21,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
     private final WorldLoader worldLoader;
 
     public ServerTypeLoader(MongoDatabase db) {
-        super(db, "servertype");
+        super(db, "servertypes");
         pluginLoader = new PluginLoader(db);
         worldLoader = new WorldLoader(db);
     }
@@ -30,7 +30,8 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
         ArrayList<ServerType> types = new ArrayList<>();
         DBCursor dbCursor = getDb().findMany(getCollection());
         while (dbCursor.hasNext()) {
-            ServerType type = loadEntity((ObjectId)dbCursor.next().get("_id"));
+            DBObject dbObject = dbCursor.next();
+            ServerType type = loadEntity((ObjectId)dbObject.get("_id"));
             if (type != null) {
                 types.add(type);
             }
@@ -40,6 +41,10 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
 
     @Override
     public ServerType loadEntity(ObjectId _id) {
+        if (_id == null) {
+            log.error("Error loading server type. _id null");
+            return null;
+        }
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             ServerType serverType = new ServerType();
@@ -49,6 +54,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
             serverType.setMemory((Integer)dbObject.get("memory"));
             serverType.setPlayers((Integer)dbObject.get("players"));
 
+            log.info("Loading "+serverType.getName()+" plugins");
             BasicDBList plugins = (BasicDBList) dbObject.get("plugins");
             for (Object obj : plugins) {
                 DBObject dbObj = (DBObject) obj;
@@ -72,10 +78,12 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                 }
             }
 
+            log.info("Loading "+serverType.getName()+" worlds");
             BasicDBList worlds = (BasicDBList) dbObject.get("worlds");
             for (Object obj : worlds) {
                 DBObject dbObj = (DBObject) obj;
-                ObjectId _worldId = (ObjectId) dbObj.get("_worldId");
+                ObjectId _worldId = (ObjectId) dbObj.get("_id");
+                log.info("Loading world "+_worldId);
                 World world = worldLoader.loadEntity(_worldId);
                 if (world == null) {
                     log.error("Error loading world for server "+serverType.getName());
@@ -84,6 +92,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                 serverType.getWorlds().add(world);
             }
 
+            log.info("Loading "+serverType.getName()+" default world");
             ObjectId _defaultWorldId = (ObjectId) dbObject.get("_defaultWorldId");
             World world = worldLoader.loadEntity(_defaultWorldId);
             if (world == null) {
@@ -97,7 +106,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
             }
 
             serverType.setDefaultWorld(world);
-
+            log.info("Loaded Type "+serverType.getName());
             return serverType;
         }
         log.info("Unknown Server Type "+_id.toString());

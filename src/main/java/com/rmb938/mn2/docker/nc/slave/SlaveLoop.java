@@ -26,7 +26,7 @@ public class SlaveLoop implements Runnable {
 
     @Override
     public void run() {
-        Map<ServerType, SlaveLoopWorker> workers = new HashMap<>();
+        Map<ServerType, SlaveLoopWorker> workers = new HashMap<ServerType, SlaveLoopWorker>();
         while(true) {
 
             Iterator<Map.Entry<ServerType, SlaveLoopWorker>> iterator = workers.entrySet().iterator();
@@ -40,6 +40,7 @@ public class SlaveLoop implements Runnable {
 
             serverTypeLoader.getTypes().stream().filter(serverType -> !workers.containsKey(serverType)).forEach(serverType -> {
                 try {
+                    log.info("Starting Slave Loop Worker "+serverType.getName());
                     SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, rabbitMQ, serverTypeLoader);
                     workers.put(serverType, slaveLoopWorker);
                     executorService.submit(slaveLoopWorker);

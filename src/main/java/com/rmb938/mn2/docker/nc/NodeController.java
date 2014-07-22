@@ -45,7 +45,7 @@ public class NodeController {
             return;
         }
 
-        List<ServerAddress> mongoAddresses = new ArrayList<>();
+        List<ServerAddress> mongoAddresses = new ArrayList<ServerAddress>();
         for (String host : hosts.split(",")) {
 
             String[] info = host.split(":");
@@ -86,6 +86,7 @@ public class NodeController {
 
         RabbitMQ rabbitMQ = null;
         try {
+            log.info("Setting up RabbitMQ "+username+" "+password);
             rabbitMQ = new RabbitMQ(rabbitAddresses, username, password);
         } catch (IOException e) {
             e.printStackTrace();
@@ -97,6 +98,7 @@ public class NodeController {
         ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase);
         ServerLoader serverLoader = new ServerLoader(mongoDatabase);
 
+        log.info("Finding Node info "+myIP);
         DBObject dbObject = mongoDatabase.findOne(nodeLoader.getCollection(), new BasicDBObject("host", myIP));
         if (dbObject == null) {
             log.error("Cannot find my node info");
@@ -106,12 +108,14 @@ public class NodeController {
         ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {
+            log.info("Starting Master Loop");
             MasterLoop masterLoop = new MasterLoop((ObjectId)dbObject.get("_id"), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader);
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        log.info("Starting Slave Loop");
         SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader, executorService);
         executorService.submit(slaveLoop);
 

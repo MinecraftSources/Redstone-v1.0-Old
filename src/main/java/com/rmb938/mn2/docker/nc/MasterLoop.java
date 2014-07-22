@@ -41,16 +41,22 @@ public class MasterLoop implements Runnable {
     @Override
     public void run() {
         while (true) {
+            log.info("Sending Update");
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+            log.info("Sent Update");
             if (amIMaster()) {
+                log.info("I am the master");
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
+                        log.info("Checking "+serverType.getName()+"-worker queue");
                         int messages = channel.queueDeclarePassive(serverType.getName()+"-worker").getMessageCount();
+                        log.info(serverType.getName()+"-worker queue size "+messages);
                         if (messages > 0) {
                             continue;
                         }
                     } catch (IOException e) {
                         //Queue hasn't been made yet so continue
+                        log.info("No queue yet for "+serverType.getName());
                         continue;
                     }
 

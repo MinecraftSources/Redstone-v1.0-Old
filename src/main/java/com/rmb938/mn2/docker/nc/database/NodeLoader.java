@@ -15,14 +15,16 @@ import java.net.UnknownHostException;
 public class NodeLoader extends EntityLoader<Node> {
 
     public NodeLoader(MongoDatabase db) {
-        super(db, "node");
+        super(db, "nodes");
     }
 
     public Node getMaster() {
         DBCursor dbCursor = getDb().findMany(getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$gt", System.currentTimeMillis()-30000)));
         dbCursor = dbCursor.sort(new BasicDBObject("_id", 1));
+        log.info("Potential Masters "+dbCursor.size());
         if (dbCursor.hasNext()) {
-            Node node = loadEntity((ObjectId)dbCursor.next().get("_id"));
+            DBObject dbObject = dbCursor.next();
+            Node node = loadEntity((ObjectId)dbObject.get("_id"));
             dbCursor.close();
             return node;
         }
@@ -31,9 +33,14 @@ public class NodeLoader extends EntityLoader<Node> {
 
     @Override
     public Node loadEntity(ObjectId _id) {
+        if (_id == null) {
+            log.error("Error loading node. _id null");
+            return null;
+        }
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             Node node = new Node();
+            node.set_id(_id);
             try {
                 node.setAddress(InetAddress.getByName((String) dbObject.get("host")));
             } catch (UnknownHostException e) {

@@ -11,11 +11,15 @@ import org.bson.types.ObjectId;
 public class WorldLoader extends EntityLoader<World> {
 
     public WorldLoader(MongoDatabase db) {
-        super(db, "world");
+        super(db, "worlds");
     }
 
     @Override
     public World loadEntity(ObjectId _id) {
+        if (_id == null) {
+            log.error("Error loading world. _id null");
+            return null;
+        }
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             World world = new World();
@@ -30,6 +34,7 @@ public class WorldLoader extends EntityLoader<World> {
             }
             world.setGenerator((String)dbObject.get("generator"));
 
+            log.info("Loaded World "+world.getName());
             return world;
         }
         log.info("Unknown World "+_id.toString());

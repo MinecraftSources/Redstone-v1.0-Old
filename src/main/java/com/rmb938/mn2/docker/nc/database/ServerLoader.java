@@ -9,7 +9,7 @@ import org.bson.types.ObjectId;
 public class ServerLoader extends EntityLoader<Server> {
 
     public ServerLoader(MongoDatabase db) {
-        super(db, "server");
+        super(db, "servers");
     }
 
     public Long getCount(ServerType serverType) {
