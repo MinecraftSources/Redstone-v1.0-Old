@@ -16,7 +16,7 @@ public abstract class EntityLoader<T extends Entity> {
     protected EntityLoader(MongoDatabase db, String collection) {
         this.db = db;
         this.collection = collection;
-        db.createCollection(collection);
+        //db.createCollection(collection);
     }
 
     public abstract T loadEntity(ObjectId _id);
