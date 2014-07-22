@@ -61,7 +61,7 @@ public class NodeController {
             return;
         }
 
-        MongoDatabase mongoDatabase = new MongoDatabase(null, db);
+        MongoDatabase mongoDatabase = new MongoDatabase(mongoAddresses, db);
 
         hosts = System.getenv("RABBITMQ_HOSTS");
         String username = System.getenv("RABBITMQ_USERNAME");
