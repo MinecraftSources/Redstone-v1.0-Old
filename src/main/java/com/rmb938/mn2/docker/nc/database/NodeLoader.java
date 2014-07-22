@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 public class NodeLoader extends EntityLoader<Node> {
 
     public NodeLoader(MongoDatabase db) {
-        super(db, "Node");
+        super(db, "node");
     }
 
     public Node getMaster() {

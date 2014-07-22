@@ -13,7 +13,7 @@ import org.bson.types.ObjectId;
 public class PluginLoader extends EntityLoader<Plugin> {
 
     public PluginLoader(MongoDatabase db) {
-        super(db, "Plugin");
+        super(db, "plugin");
     }
 
     @Override

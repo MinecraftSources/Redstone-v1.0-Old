@@ -11,7 +11,7 @@ import org.bson.types.ObjectId;
 public class WorldLoader extends EntityLoader<World> {
 
     public WorldLoader(MongoDatabase db) {
-        super(db, "World");
+        super(db, "world");
     }
 
     @Override

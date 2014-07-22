@@ -21,7 +21,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
     private final WorldLoader worldLoader;
 
     public ServerTypeLoader(MongoDatabase db) {
-        super(db, "ServerType");
+        super(db, "servertype");
         pluginLoader = new PluginLoader(db);
         worldLoader = new WorldLoader(db);
     }
