@@ -34,7 +34,7 @@ public class WorldLoader extends EntityLoader<World> {
             }
             world.setGenerator((String)dbObject.get("generator"));
 
-            log.info("Loaded World "+world.getName());
+            //log.info("Loaded World "+world.getName());
             return world;
         }
         log.info("Unknown World "+_id.toString());

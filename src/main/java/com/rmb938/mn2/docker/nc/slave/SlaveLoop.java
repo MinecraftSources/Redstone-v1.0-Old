@@ -33,6 +33,7 @@ public class SlaveLoop implements Runnable {
             while (iterator.hasNext()) {
                 Map.Entry<ServerType, SlaveLoopWorker> workerEntry = iterator.next();
                 if (serverTypeLoader.loadEntity(workerEntry.getKey().get_id()) == null) {
+                    log.info("Removing slave worker loop "+workerEntry.getKey().getName());
                     workerEntry.getValue().stopWorking();
                     iterator.remove();
                 }

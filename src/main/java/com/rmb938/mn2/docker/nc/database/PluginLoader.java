@@ -47,7 +47,7 @@ public class PluginLoader extends EntityLoader<Plugin> {
             }
             return plugin;
         }
-        log.info("Unknown Plugin "+_id.toString());
+        //log.info("Unknown Plugin "+_id.toString());
         return null;
     }
 

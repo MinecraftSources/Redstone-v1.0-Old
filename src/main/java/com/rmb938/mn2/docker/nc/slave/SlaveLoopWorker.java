@@ -16,7 +16,7 @@ public class SlaveLoopWorker implements Runnable {
 
     private final ServerTypeLoader serverTypeLoader;
     private final QueueingConsumer consumer;
-    private final Channel channel;
+    private Channel channel;
     private final ObjectId _myServerTypeId;
 
     public SlaveLoopWorker(ServerType serverType, RabbitMQ rabbitMQ, ServerTypeLoader serverTypeLoader) throws Exception {
@@ -26,6 +26,7 @@ public class SlaveLoopWorker implements Runnable {
             log.info("Connecting to Queue "+serverType.getName()+"-worker");
             channel.queueDeclarePassive(serverType.getName()+"-worker");
         } catch (IOException e) {
+            channel = rabbitMQ.getChannel();
             log.info("Creating Queue "+serverType.getName()+"-worker");
             channel.queueDeclare(serverType.getName()+"-worker", true, false, true, null);
         }
@@ -55,7 +56,7 @@ public class SlaveLoopWorker implements Runnable {
                     break;
                 }
 
-                JSONObject object = new JSONObject(delivery.getBody());
+                JSONObject object = new JSONObject(new String(delivery.getBody()));
                 log.info("Received Server build request "+object);
 
                 channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
@@ -67,8 +68,8 @@ public class SlaveLoopWorker implements Runnable {
         }
         try {
             channel.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
     }
 

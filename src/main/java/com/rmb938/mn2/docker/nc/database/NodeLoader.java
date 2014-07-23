@@ -21,7 +21,6 @@ public class NodeLoader extends EntityLoader<Node> {
     public Node getMaster() {
         DBCursor dbCursor = getDb().findMany(getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$gt", System.currentTimeMillis()-30000)));
         dbCursor = dbCursor.sort(new BasicDBObject("_id", 1));
-        log.info("Potential Masters "+dbCursor.size());
         if (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
             Node node = loadEntity((ObjectId)dbObject.get("_id"));

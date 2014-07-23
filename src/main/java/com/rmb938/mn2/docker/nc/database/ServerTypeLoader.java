@@ -54,7 +54,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
             serverType.setMemory((Integer)dbObject.get("memory"));
             serverType.setPlayers((Integer)dbObject.get("players"));
 
-            log.info("Loading "+serverType.getName()+" plugins");
+            //log.info("Loading "+serverType.getName()+" plugins");
             BasicDBList plugins = (BasicDBList) dbObject.get("plugins");
             for (Object obj : plugins) {
                 DBObject dbObj = (DBObject) obj;
@@ -78,12 +78,12 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                 }
             }
 
-            log.info("Loading "+serverType.getName()+" worlds");
+            //log.info("Loading "+serverType.getName()+" worlds");
             BasicDBList worlds = (BasicDBList) dbObject.get("worlds");
             for (Object obj : worlds) {
                 DBObject dbObj = (DBObject) obj;
                 ObjectId _worldId = (ObjectId) dbObj.get("_id");
-                log.info("Loading world "+_worldId);
+                //log.info("Loading world "+_worldId);
                 World world = worldLoader.loadEntity(_worldId);
                 if (world == null) {
                     log.error("Error loading world for server "+serverType.getName());
@@ -102,7 +102,7 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                 return null;
             }
 
-            log.info("Loaded Type "+serverType.getName());
+            //log.info("Loaded Type "+serverType.getName());
             return serverType;
         }
         log.info("Unknown Server Type "+_id.toString());
