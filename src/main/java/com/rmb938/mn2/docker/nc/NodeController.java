@@ -115,9 +115,13 @@ public class NodeController {
             e.printStackTrace();
         }
 
-        log.info("Starting Slave Loop");
-        SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader);
-        executorService.submit(slaveLoop);
+        try {
+            log.info("Starting Slave Loop");
+            SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader);
+            executorService.submit(slaveLoop);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 

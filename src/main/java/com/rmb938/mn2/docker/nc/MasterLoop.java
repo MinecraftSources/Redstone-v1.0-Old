@@ -1,9 +1,7 @@
 package com.rmb938.mn2.docker.nc;
 
 import com.mongodb.BasicDBObject;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.MessageProperties;
+import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import com.rmb938.mn2.docker.nc.database.NodeLoader;
 import com.rmb938.mn2.docker.nc.database.ServerLoader;
@@ -25,15 +23,16 @@ public class MasterLoop implements Runnable {
     private final ServerLoader serverLoader;
     private final ObjectId _myId;
     private Channel channel;
-    private final RabbitMQ rabbitMQ;
+    private final Connection connection;
 
     public MasterLoop(ObjectId _myId, RabbitMQ rabbitMQ, NodeLoader nodeLoader, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader) throws Exception {
         this.nodeLoader = nodeLoader;
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
         this._myId = _myId;
-        this.rabbitMQ = rabbitMQ;
-        channel = rabbitMQ.getChannel();
+        connection = rabbitMQ.getConnection();
+        connection.addShutdownListener(Throwable::printStackTrace);
+        channel = connection.createChannel();
     }
 
     private boolean amIMaster() {
@@ -49,7 +48,6 @@ public class MasterLoop implements Runnable {
             if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
-                        log.info("Checking Queue");
                         AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-worker");
                         int messages = declareOk.getMessageCount();
                         if (messages > 0) {
@@ -58,8 +56,7 @@ public class MasterLoop implements Runnable {
                     } catch (IOException e) {
                         if (!channel.isOpen()) {
                             try {
-                                log.info("Remaking Channel");
-                                channel = rabbitMQ.getChannel();
+                                channel = connection.createChannel();
                             } catch (IOException e1) {
                                 e1.printStackTrace();
                             }

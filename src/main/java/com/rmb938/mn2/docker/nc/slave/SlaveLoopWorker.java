@@ -18,14 +18,14 @@ public class SlaveLoopWorker {
     private Channel channel;
     private final ObjectId _myServerTypeId;
 
-    public SlaveLoopWorker(ServerType serverType, RabbitMQ rabbitMQ, ServerTypeLoader serverTypeLoader) throws Exception {
+    public SlaveLoopWorker(ServerType serverType, Connection connection, ServerTypeLoader serverTypeLoader) throws Exception {
         _myServerTypeId = serverType.get_id();
-        channel = rabbitMQ.getChannel();
+        channel = connection.createChannel();
         try {
             log.info("Connecting to Queue "+serverType.getName()+"-worker");
             channel.queueDeclarePassive(serverType.getName() + "-worker");
         } catch (IOException e) {
-            channel = rabbitMQ.getChannel();
+            channel = connection.createChannel();
             log.info("Creating Queue "+serverType.getName()+"-worker");
             channel.queueDeclare(serverType.getName()+"-worker", true, false, true, null);
         }
@@ -76,6 +76,11 @@ public class SlaveLoopWorker {
 
         public SlaveConsumer(Channel channel) {
             super(channel);
+        }
+
+        @Override
+        public void handleRecoverOk(String consumerTag) {
+
         }
 
         @Override
