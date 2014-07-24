@@ -12,6 +12,7 @@ import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 
 @Log4j2
@@ -69,13 +70,16 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
                     log.error("Trying to add Non-Bukkit plugin "+plugin.getName()+" to server "+serverType.getName());
                     return null;
                 }
-
-                ObjectId _configId = (ObjectId) dbObj.get("_configId");
-                PluginConfig pluginConfig = plugin.getConfigs().get(_configId);
-                if (pluginConfig == null) {
-                    log.error("Plugin config "+_configId+" does not exist for plugin "+plugin.getName());
-                    return null;
+                PluginConfig pluginConfig = null;
+                if (dbObj.containsField("_configId")) {
+                    ObjectId _configId = (ObjectId) dbObj.get("_configId");
+                    pluginConfig = plugin.getConfigs().get(_configId);
+                    if (pluginConfig == null) {
+                        log.error("Plugin config " + _configId + " does not exist for plugin " + plugin.getName());
+                        return null;
+                    }
                 }
+                serverType.getPlugins().add(new AbstractMap.SimpleEntry<Plugin, PluginConfig>(plugin, pluginConfig));
             }
 
             //log.info("Loading "+serverType.getName()+" worlds");
