@@ -44,10 +44,12 @@ public class MasterLoop implements Runnable {
     @Override
     public void run() {
         while (true) {
+            log.info("Sending Update");
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
+                        log.info("Checking Queue");
                         AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-worker");
                         int messages = declareOk.getMessageCount();
                         if (messages > 0) {
@@ -56,6 +58,7 @@ public class MasterLoop implements Runnable {
                     } catch (IOException e) {
                         if (!channel.isOpen()) {
                             try {
+                                log.info("Remaking Channel");
                                 channel = rabbitMQ.getChannel();
                             } catch (IOException e1) {
                                 e1.printStackTrace();

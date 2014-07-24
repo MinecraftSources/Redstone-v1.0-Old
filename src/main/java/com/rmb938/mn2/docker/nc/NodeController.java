@@ -116,7 +116,7 @@ public class NodeController {
         }
 
         log.info("Starting Slave Loop");
-        SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader, executorService);
+        SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader);
         executorService.submit(slaveLoop);
 
     }

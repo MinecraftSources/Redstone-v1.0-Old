@@ -1,7 +1,6 @@
 package com.rmb938.mn2.docker.nc.slave;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.QueueingConsumer;
+import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
 import com.rmb938.mn2.docker.nc.entity.ServerType;
@@ -12,10 +11,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 
 @Log4j2
-public class SlaveLoopWorker implements Runnable {
+public class SlaveLoopWorker {
 
     private final ServerTypeLoader serverTypeLoader;
-    private final QueueingConsumer consumer;
+    private final SlaveConsumer consumer;
     private Channel channel;
     private final ObjectId _myServerTypeId;
 
@@ -24,14 +23,14 @@ public class SlaveLoopWorker implements Runnable {
         channel = rabbitMQ.getChannel();
         try {
             log.info("Connecting to Queue "+serverType.getName()+"-worker");
-            channel.queueDeclarePassive(serverType.getName()+"-worker");
+            channel.queueDeclarePassive(serverType.getName() + "-worker");
         } catch (IOException e) {
             channel = rabbitMQ.getChannel();
             log.info("Creating Queue "+serverType.getName()+"-worker");
             channel.queueDeclare(serverType.getName()+"-worker", true, false, true, null);
         }
         channel.basicQos(1);
-        consumer = new QueueingConsumer(channel);
+        consumer = new SlaveConsumer(channel);
         channel.basicConsume(serverType.getName()+"-worker", false, consumer);
         this.serverTypeLoader = serverTypeLoader;
     }
@@ -44,7 +43,7 @@ public class SlaveLoopWorker implements Runnable {
         }
     }
 
-    @Override
+    /*@Override
     public void run() {
         while (true) {
             try {
@@ -70,6 +69,26 @@ public class SlaveLoopWorker implements Runnable {
             channel.close();
         } catch (IOException ex) {
             ex.printStackTrace();
+        }
+    }*/
+
+    class SlaveConsumer extends DefaultConsumer {
+
+        public SlaveConsumer(Channel channel) {
+            super(channel);
+        }
+
+        @Override
+        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+            ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
+            if (serverType == null) {
+                channel.basicAck(envelope.getDeliveryTag(), false);
+            }
+
+            JSONObject object = new JSONObject(new String(body));
+            log.info("Received Server build request "+object);
+
+            channel.basicAck(envelope.getDeliveryTag(), false);
         }
     }
 

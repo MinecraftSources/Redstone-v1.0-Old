@@ -16,12 +16,10 @@ public class SlaveLoop implements Runnable {
 
     private final RabbitMQ rabbitMQ;
     private final ServerTypeLoader serverTypeLoader;
-    private final ExecutorService executorService;
 
-    public SlaveLoop(RabbitMQ rabbitMQ, ServerTypeLoader serverTypeLoader, ExecutorService executorService) {
+    public SlaveLoop(RabbitMQ rabbitMQ, ServerTypeLoader serverTypeLoader) {
         this.rabbitMQ = rabbitMQ;
         this.serverTypeLoader = serverTypeLoader;
-        this.executorService = executorService;
     }
 
     @Override
@@ -44,7 +42,6 @@ public class SlaveLoop implements Runnable {
                     log.info("Starting Slave Loop Worker "+serverType.getName());
                     SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, rabbitMQ, serverTypeLoader);
                     workers.put(serverType, slaveLoopWorker);
-                    executorService.submit(slaveLoopWorker);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
