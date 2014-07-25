@@ -5,10 +5,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
-import com.rmb938.mn2.docker.nc.entity.Plugin;
-import com.rmb938.mn2.docker.nc.entity.PluginConfig;
-import com.rmb938.mn2.docker.nc.entity.ServerType;
-import com.rmb938.mn2.docker.nc.entity.World;
+import com.rmb938.mn2.docker.nc.entity.*;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
@@ -114,7 +111,12 @@ public class ServerTypeLoader extends EntityLoader<ServerType> {
     }
 
     @Override
-    public void saveEntity(ServerType entity) {
+    public void saveEntity(ServerType serverType) {
 
+    }
+
+    @Override
+    public ObjectId insertEntity(ServerType serverType) {
+        return null;
     }
 }

@@ -3,6 +3,7 @@ package com.rmb938.mn2.docker.nc.database;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
+import com.rmb938.mn2.docker.nc.entity.Node;
 import com.rmb938.mn2.docker.nc.entity.World;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -32,7 +33,7 @@ public class WorldLoader extends EntityLoader<World> {
                 log.error("Invalid environment for world "+world.getName());
                 return null;
             }
-            world.setGenerator((String)dbObject.get("generator"));
+            world.setGenerator((String) dbObject.get("generator"));
 
             //log.info("Loaded World "+world.getName());
             return world;
@@ -42,7 +43,12 @@ public class WorldLoader extends EntityLoader<World> {
     }
 
     @Override
-    public void saveEntity(World entity) {
+    public void saveEntity(World world) {
 
+    }
+
+    @Override
+    public ObjectId insertEntity(World world) {
+        return null;
     }
 }

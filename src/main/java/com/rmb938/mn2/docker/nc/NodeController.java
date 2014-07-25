@@ -9,6 +9,7 @@ import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import com.rmb938.mn2.docker.nc.database.NodeLoader;
 import com.rmb938.mn2.docker.nc.database.ServerLoader;
 import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
+import com.rmb938.mn2.docker.nc.entity.Node;
 import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -104,12 +105,13 @@ public class NodeController {
             log.error("Cannot find my node info");
             return;
         }
+        Node node = nodeLoader.loadEntity((ObjectId)dbObject.get("_id"));
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {
             log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop((ObjectId)dbObject.get("_id"), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader);
+            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader);
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();
@@ -117,7 +119,7 @@ public class NodeController {
 
         try {
             log.info("Starting Slave Loop");
-            SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, serverTypeLoader);
+            SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, node, serverTypeLoader, serverLoader, nodeLoader);
             executorService.submit(slaveLoop);
         } catch (Exception e) {
             e.printStackTrace();

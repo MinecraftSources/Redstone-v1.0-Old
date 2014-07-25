@@ -23,4 +23,6 @@ public abstract class EntityLoader<T extends Entity> {
 
     public abstract void saveEntity(T entity);
 
+    public abstract ObjectId insertEntity(T entity);
+
 }

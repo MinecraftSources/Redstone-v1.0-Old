@@ -4,6 +4,7 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
+import com.rmb938.mn2.docker.nc.entity.Node;
 import com.rmb938.mn2.docker.nc.entity.Plugin;
 import com.rmb938.mn2.docker.nc.entity.PluginConfig;
 import lombok.extern.log4j.Log4j2;
@@ -54,5 +55,10 @@ public class PluginLoader extends EntityLoader<Plugin> {
     @Override
     public void saveEntity(Plugin plugin) {
 
+    }
+
+    @Override
+    public ObjectId insertEntity(Plugin plugin) {
+        return null;
     }
 }

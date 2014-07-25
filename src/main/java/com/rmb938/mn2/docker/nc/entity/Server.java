@@ -13,8 +13,15 @@ public class Server extends Entity {
     private final ServerType serverType;
 
     @Getter
+    private final Node node;
+
+    @Getter
     @Setter
-    private Node node;
+    private long lastUpdate = 0L;
+
+    @Getter
+    @Setter
+    private String containerId;
 
     @Getter
     private ArrayList<Player> players = new ArrayList<>();

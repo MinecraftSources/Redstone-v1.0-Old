@@ -1,5 +1,6 @@
 package com.rmb938.mn2.docker.nc;
 
+import com.github.dockerjava.client.DockerClient;
 import com.mongodb.BasicDBObject;
 import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
@@ -21,15 +22,15 @@ public class MasterLoop implements Runnable {
     private final NodeLoader nodeLoader;
     private final ServerTypeLoader serverTypeLoader;
     private final ServerLoader serverLoader;
-    private final ObjectId _myId;
+    private final ObjectId _myNodeId;
     private Channel channel;
     private final Connection connection;
 
-    public MasterLoop(ObjectId _myId, RabbitMQ rabbitMQ, NodeLoader nodeLoader, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader) throws Exception {
+    public MasterLoop(ObjectId _myNodeId, RabbitMQ rabbitMQ, NodeLoader nodeLoader, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader) throws Exception {
         this.nodeLoader = nodeLoader;
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
-        this._myId = _myId;
+        this._myNodeId = _myNodeId;
         connection = rabbitMQ.getConnection();
         connection.addShutdownListener(Throwable::printStackTrace);
         channel = connection.createChannel();
@@ -37,14 +38,14 @@ public class MasterLoop implements Runnable {
 
     private boolean amIMaster() {
         Node master = nodeLoader.getMaster();
-        return master != null && master.get_id().compareTo(_myId) == 0;
+        return master != null && master.get_id().compareTo(_myNodeId) == 0;
     }
 
     @Override
     public void run() {
         while (true) {
             log.info("Sending Update");
-            nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+            nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
@@ -73,7 +74,7 @@ public class MasterLoop implements Runnable {
                             JSONObject object = new JSONObject();
                             object.put("type", serverType.get_id().toString());
                             try {
-                                channel.basicPublish("", serverType.getName()+"-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                                 log.info("Sent server build request "+object);
                             } catch (IOException e) {
                                 e.printStackTrace();

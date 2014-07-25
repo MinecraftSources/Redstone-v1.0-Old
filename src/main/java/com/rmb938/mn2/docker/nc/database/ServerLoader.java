@@ -2,6 +2,7 @@ package com.rmb938.mn2.docker.nc.database;
 
 import com.mongodb.BasicDBObject;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
+import com.rmb938.mn2.docker.nc.entity.Node;
 import com.rmb938.mn2.docker.nc.entity.Server;
 import com.rmb938.mn2.docker.nc.entity.ServerType;
 import org.bson.types.ObjectId;
@@ -22,7 +23,11 @@ public class ServerLoader extends EntityLoader<Server> {
     }
 
     @Override
-    public void saveEntity(Server entity) {
+    public void saveEntity(Server server) {
+    }
 
+    @Override
+    public ObjectId insertEntity(Server server) {
+        return null;
     }
 }

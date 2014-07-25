@@ -40,12 +40,7 @@ public class NodeLoader extends EntityLoader<Node> {
         if (dbObject != null) {
             Node node = new Node();
             node.set_id(_id);
-            try {
-                node.setAddress(InetAddress.getByName((String) dbObject.get("host")));
-            } catch (UnknownHostException e) {
-                log.error("Error loading node. Unknown Inet Address");
-                return null;
-            }
+            node.setAddress((String) dbObject.get("host"));
             node.setLastUpdate((Long) dbObject.get("lastUpdate"));
 
             return node;
@@ -54,7 +49,12 @@ public class NodeLoader extends EntityLoader<Node> {
     }
 
     @Override
-    public void saveEntity(Node entity) {
+    public void saveEntity(Node node) {
 
+    }
+
+    @Override
+    public ObjectId insertEntity(Node node) {
+        return null;
     }
 }

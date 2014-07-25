@@ -9,10 +9,10 @@ public class Node extends Entity {
 
     @Getter
     @Setter
-    private InetAddress address;
+    private String address;
 
     @Getter
     @Setter
-    private Long lastUpdate;
+    private long lastUpdate = 0L;
 
 }
