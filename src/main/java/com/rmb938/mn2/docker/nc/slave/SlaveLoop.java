@@ -78,7 +78,7 @@ public class SlaveLoop implements Runnable {
                 DBObject dbObject = dbCursor.next();
                 Server server = serverLoader.loadEntity((ObjectId)dbObject.get("_id"));
                 if (server != null) {
-                    DockerClient dockerClient = new DockerClient("http://localhost:4342");
+                    DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
 
                     try {
                         log.info("Killing dead server "+server.getServerType().getName());

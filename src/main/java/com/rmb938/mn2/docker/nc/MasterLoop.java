@@ -49,7 +49,7 @@ public class MasterLoop implements Runnable {
             if (amIMaster()) {
                 for (ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
-                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-worker");
+                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-server-worker");
                         int messages = declareOk.getMessageCount();
                         if (messages > 0) {
                             continue;

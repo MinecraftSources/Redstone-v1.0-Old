@@ -121,22 +121,28 @@ public class SlaveLoopWorker {
                 return;
             }
 
-            Server server = new Server(serverType, node);
+            Server server = new Server();
+            server.setServerType(serverType);
+            server.setNode(node);
             ObjectId serverId = serverLoader.insertEntity(server);
 
-            DockerClient dockerClient = new DockerClient("http://localhost:4342");
+
+            DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
             ContainerCreateResponse response = null;
             try {
                 log.info("Creating container for "+serverType.getName());
+                String imageId = dockerClient.inspectImageCmd("mnsquared/server").exec().getId();
                 response = dockerClient.createContainerCmd("mnsquared/server")
-                        .withEnv("MONGO_HOSTS="+System.getenv("MONGO_HOSTS"))
-                        .withEnv("MONGO_DB="+System.getenv("MONGO_DB"))
-                        .withEnv("RABBITMQ_HOSTS="+System.getenv("RABBITMQ_HOSTS"))
-                        .withEnv("RABBITMQ_USERNAME="+System.getenv("RABBITMQ_USERNAME"))
-                        .withEnv("RABBITMQ_PASSWORD="+System.getenv("RABBITMQ_PASSWORD"))
-                        .withEnv("MY_SERVER_ID="+serverId.toString())
+                        .withEnv("MONGO_HOSTS="+System.getenv("MONGO_HOSTS"), "MONGO_DB="+System.getenv("MONGO_DB"),
+                                "RABBITMQ_HOSTS="+System.getenv("RABBITMQ_HOSTS"),
+                                "RABBITMQ_USERNAME="+System.getenv("RABBITMQ_USERNAME"),
+                                "RABBITMQ_PASSWORD="+System.getenv("RABBITMQ_PASSWORD"),
+                                "RACKSPACE_USERNAME="+System.getenv("RACKSPACE_USERNAME"),
+                                "RACKSPACE_API="+System.getenv("RACKSPACE_API"),
+                                "MY_SERVER_ID="+serverId.toString())
                         .exec();
             } catch (Exception ex) {
+                ex.printStackTrace();
                 log.error("Unable to create container for server "+serverType.getName());
                 channel.basicNack(envelope.getDeliveryTag(), false, true);
                 return;

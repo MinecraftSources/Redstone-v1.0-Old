@@ -63,6 +63,7 @@
                                     <include>com.rmb938.mn2.docker:MN2Database:*</include>
                                     <include>org.projectlombok:lombok:*</include>
                                     <include>org.json:json:*</include>
+                                    <include>com.github.docker-java:docker-java:*</include>
                                 </includes>
                             </artifactSet>
                         </configuration>

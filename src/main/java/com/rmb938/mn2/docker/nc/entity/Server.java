@@ -6,18 +6,19 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 
-@RequiredArgsConstructor
 public class Server extends Entity {
 
     @Getter
-    private final ServerType serverType;
-
-    @Getter
-    private final Node node;
+    @Setter
+    private ServerType serverType;
 
     @Getter
     @Setter
-    private long lastUpdate = 0L;
+    private Node node;
+
+    @Getter
+    @Setter
+    private long lastUpdate;
 
     @Getter
     @Setter

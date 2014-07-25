@@ -97,7 +97,7 @@ public class NodeController {
 
         NodeLoader nodeLoader = new NodeLoader(mongoDatabase);
         ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase);
-        ServerLoader serverLoader = new ServerLoader(mongoDatabase);
+        ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader);
 
         log.info("Finding Node info "+myIP);
         DBObject dbObject = mongoDatabase.findOne(nodeLoader.getCollection(), new BasicDBObject("host", myIP));
