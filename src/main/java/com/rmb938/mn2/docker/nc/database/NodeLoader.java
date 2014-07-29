@@ -41,7 +41,12 @@ public class NodeLoader extends EntityLoader<Node> {
             Node node = new Node();
             node.set_id(_id);
             node.setAddress((String) dbObject.get("host"));
-            node.setLastUpdate((Long) dbObject.get("lastUpdate"));
+            Object lastUpdate = dbObject.get("lastUpdate");
+            if (lastUpdate instanceof Integer) {
+                node.setLastUpdate(((Integer)lastUpdate).longValue());
+            } else {
+                node.setLastUpdate((Long) lastUpdate);
+            }
 
             return node;
         }
