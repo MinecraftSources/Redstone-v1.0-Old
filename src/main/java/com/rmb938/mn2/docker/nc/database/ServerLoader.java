@@ -23,7 +23,7 @@ public class ServerLoader extends EntityLoader<Server> {
     }
 
     public Long getCount(ServerType serverType) {
-        return getDb().count(getCollection(), new BasicDBObject("serverType", serverType.get_id()));
+        return getDb().count(getCollection(), new BasicDBObject("_servertype", serverType.get_id()));
     }
 
     @Override

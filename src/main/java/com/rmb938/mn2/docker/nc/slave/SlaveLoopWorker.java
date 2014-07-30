@@ -126,7 +126,6 @@ public class SlaveLoopWorker {
             server.setNode(node);
             ObjectId serverId = serverLoader.insertEntity(server);
 
-
             DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
             ContainerCreateResponse response = null;
             try {
@@ -140,6 +139,7 @@ public class SlaveLoopWorker {
                                 "RACKSPACE_USERNAME="+System.getenv("RACKSPACE_USERNAME"),
                                 "RACKSPACE_API="+System.getenv("RACKSPACE_API"),
                                 "MY_SERVER_ID="+serverId.toString())
+                        .withExposedPorts()
                         .exec();
             } catch (Exception ex) {
                 ex.printStackTrace();
