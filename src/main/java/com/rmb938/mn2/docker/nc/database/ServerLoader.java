@@ -35,6 +35,7 @@ public class ServerLoader extends EntityLoader<Server> {
         DBObject dbObject = getDb().findOne(getCollection(), new BasicDBObject("_id", _id));
         if (dbObject != null) {
             Server server = new Server();
+            server.set_id((ObjectId)dbObject.get("_id"));
             server.setServerType(serverTypeLoader.loadEntity((ObjectId)dbObject.get("_servertype")));
             server.setNode(nodeLoader.loadEntity((ObjectId)dbObject.get("_node")));
             server.setContainerId((String)dbObject.get("containerId"));
@@ -55,15 +56,22 @@ public class ServerLoader extends EntityLoader<Server> {
 
     @Override
     public void saveEntity(Server server) {
-        getDb().updateDocument(getCollection(), new BasicDBObject("_id", server.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", server.getLastUpdate())));
+        BasicDBObject values = new BasicDBObject();
+        values.put("lastUpdate", server.getLastUpdate());
+        values.put("containerId", server.getContainerId());
+
+        BasicDBObject set = new BasicDBObject("$set", values);
+        getDb().updateDocument(getCollection(), new BasicDBObject("_id", server.get_id()), set);
+        log.info("Saving Server "+server.get_id());
     }
 
     @Override
     public ObjectId insertEntity(Server server) {
-        BasicDBObject dbObject = new BasicDBObject();
+        BasicDBObject dbObject = new BasicDBObject("_id", new ObjectId());
         dbObject.append("_servertype", server.getServerType().get_id());
         dbObject.append("_node", server.getNode().get_id());
         dbObject.append("lastUpdate", 0L);
+        dbObject.append("containerId", "NULL");
         getDb().insert(getCollection(), dbObject);
         return (ObjectId) dbObject.get("_id");
     }

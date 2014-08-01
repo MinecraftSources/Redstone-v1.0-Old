@@ -132,7 +132,7 @@ public class SlaveLoopWorker {
                 log.info("Creating container for "+serverType.getName());
                 String imageId = dockerClient.inspectImageCmd("mnsquared/server").exec().getId();
                 response = dockerClient.createContainerCmd("mnsquared/server")
-                        .withEnv("MONGO_HOSTS="+System.getenv("MONGO_HOSTS"), "MONGO_DB="+System.getenv("MONGO_DB"),
+                        .withEnv("MONGO_HOSTS="+System.getenv("MONGO_HOSTS"),
                                 "RABBITMQ_HOSTS="+System.getenv("RABBITMQ_HOSTS"),
                                 "RABBITMQ_USERNAME="+System.getenv("RABBITMQ_USERNAME"),
                                 "RABBITMQ_PASSWORD="+System.getenv("RABBITMQ_PASSWORD"),

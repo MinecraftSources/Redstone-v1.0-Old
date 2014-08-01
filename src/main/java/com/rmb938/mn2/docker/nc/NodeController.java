@@ -39,13 +39,6 @@ public class NodeController {
             return;
         }
 
-        String db = System.getenv("MONGO_DB");
-
-        if (db == null) {
-            log.error("MONGO_DB is not set.");
-            return;
-        }
-
         List<ServerAddress> mongoAddresses = new ArrayList<ServerAddress>();
         for (String host : hosts.split(",")) {
 
@@ -63,8 +56,8 @@ public class NodeController {
             return;
         }
 
-        log.info("Setting up mongo database "+db);
-        MongoDatabase mongoDatabase = new MongoDatabase(mongoAddresses, db);
+        log.info("Setting up mongo database mn2");
+        MongoDatabase mongoDatabase = new MongoDatabase(mongoAddresses, "mn2");
 
         hosts = System.getenv("RABBITMQ_HOSTS");
         String username = System.getenv("RABBITMQ_USERNAME");
