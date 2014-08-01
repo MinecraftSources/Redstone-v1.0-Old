@@ -23,6 +23,7 @@ public class SlaveLoopWorker {
     private final ServerLoader serverLoader;
     private final NodeLoader nodeLoader;
     private final SlaveConsumer consumer;
+    private final Connection connection;
     private Channel channel;
     private final ObjectId _myServerTypeId;
     private final ObjectId _myNodeId;
@@ -30,7 +31,9 @@ public class SlaveLoopWorker {
     public SlaveLoopWorker(ServerType serverType, Node node, Connection connection, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws Exception {
         _myServerTypeId = serverType.get_id();
         _myNodeId = node.get_id();
+        this.connection = connection;
         channel = connection.createChannel();
+        connection.addShutdownListener(Throwable::printStackTrace);
         try {
             log.info("Connecting to Queue "+serverType.getName()+"-server-worker");
             channel.queueDeclarePassive(serverType.getName() + "-server-worker");
@@ -50,39 +53,12 @@ public class SlaveLoopWorker {
     public void stopWorking() {
         try {
             channel.basicCancel(consumer.getConsumerTag());
+            channel.close();
+            connection.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-    /*@Override
-    public void run() {
-        while (true) {
-            try {
-                log.info("Waiting for Delivery");
-                QueueingConsumer.Delivery delivery = consumer.nextDelivery();
-                ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
-                if (serverType == null) {
-                    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-                    break;
-                }
-
-                JSONObject object = new JSONObject(new String(delivery.getBody()));
-                log.info("Received Server build request "+object);
-
-                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-            } catch (InterruptedException | IOException e) {
-                //e.printStackTrace();
-                log.info("Stopping Consumer");
-                break;
-            }
-        }
-        try {
-            channel.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }*/
 
     class SlaveConsumer extends DefaultConsumer {
 

@@ -28,15 +28,14 @@ import java.util.concurrent.ExecutorService;
 @Log4j2
 public class SlaveLoop implements Runnable {
 
-    private final Connection connection;
+    private final RabbitMQ rabbitmq;
     private final ServerTypeLoader serverTypeLoader;
     private final ServerLoader serverLoader;
     private final NodeLoader nodeLoader;
     private final Node node;
 
     public SlaveLoop(RabbitMQ rabbitMQ, Node node, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws IOException {
-        connection = rabbitMQ.getConnection();
-        connection.addShutdownListener(Throwable::printStackTrace);
+        this.rabbitmq = rabbitMQ;
         this.node = node;
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
@@ -61,7 +60,7 @@ public class SlaveLoop implements Runnable {
             serverTypeLoader.getTypes().stream().filter(serverType -> !workers.containsKey(serverType)).forEach(serverType -> {
                 try {
                     log.info("Starting Slave Loop Worker "+serverType.getName());
-                    SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, node, connection, serverTypeLoader, serverLoader, nodeLoader);
+                    SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, node, rabbitmq.getConnection(), serverTypeLoader, serverLoader, nodeLoader);
                     workers.put(serverType, slaveLoopWorker);
                 } catch (Exception e) {
                     e.printStackTrace();
