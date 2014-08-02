@@ -4,12 +4,12 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.ServerAddress;
 import com.rabbitmq.client.Address;
+import com.rmb938.mn2.docker.db.database.NodeLoader;
+import com.rmb938.mn2.docker.db.database.ServerLoader;
+import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
+import com.rmb938.mn2.docker.db.entity.MN2Node;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
-import com.rmb938.mn2.docker.nc.database.NodeLoader;
-import com.rmb938.mn2.docker.nc.database.ServerLoader;
-import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
-import com.rmb938.mn2.docker.nc.entity.Node;
 import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -45,7 +45,7 @@ public class NodeController {
             String[] info = host.split(":");
             try {
                 mongoAddresses.add(new ServerAddress(info[0], Integer.parseInt(info[1])));
-                log.info("Added Mongo Address "+host);
+                log.info("Added Mongo Address " + host);
             } catch (UnknownHostException e) {
                 log.error("Invalid Mongo Address " + host);
             }
@@ -84,6 +84,7 @@ public class NodeController {
             rabbitMQ = new RabbitMQ(rabbitAddresses, username, password);
         } catch (IOException e) {
             e.printStackTrace();
+            return;
         }
 
         String myIP = System.getenv("MY_NODE_IP");
@@ -98,7 +99,7 @@ public class NodeController {
             log.error("Cannot find my node info");
             return;
         }
-        Node node = nodeLoader.loadEntity((ObjectId)dbObject.get("_id"));
+        MN2Node node = nodeLoader.loadEntity((ObjectId) dbObject.get("_id"));
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 

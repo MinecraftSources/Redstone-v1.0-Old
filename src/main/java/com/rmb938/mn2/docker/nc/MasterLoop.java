@@ -1,14 +1,16 @@
 package com.rmb938.mn2.docker.nc;
 
-import com.github.dockerjava.client.DockerClient;
 import com.mongodb.BasicDBObject;
-import com.rabbitmq.client.*;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.MessageProperties;
+import com.rmb938.mn2.docker.db.database.NodeLoader;
+import com.rmb938.mn2.docker.db.database.ServerLoader;
+import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
+import com.rmb938.mn2.docker.db.entity.MN2Node;
+import com.rmb938.mn2.docker.db.entity.MN2ServerType;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
-import com.rmb938.mn2.docker.nc.database.NodeLoader;
-import com.rmb938.mn2.docker.nc.database.ServerLoader;
-import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
-import com.rmb938.mn2.docker.nc.entity.Node;
-import com.rmb938.mn2.docker.nc.entity.ServerType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -37,7 +39,7 @@ public class MasterLoop implements Runnable {
     }
 
     private boolean amIMaster() {
-        Node master = nodeLoader.getMaster();
+        MN2Node master = nodeLoader.getMaster();
         return master != null && master.get_id().compareTo(_myNodeId) == 0;
     }
 
@@ -47,7 +49,7 @@ public class MasterLoop implements Runnable {
             log.info("Sending Update");
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
-                for (ServerType serverType : serverTypeLoader.getTypes()) {
+                for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
                         AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-server-worker");
                         int messages = declareOk.getMessageCount();
@@ -73,9 +75,10 @@ public class MasterLoop implements Runnable {
                         for (int i = 0; i < needed; i++) {
                             JSONObject object = new JSONObject();
                             object.put("type", serverType.get_id().toString());
+                            object.put("ttl", 3);
                             try {
                                 channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
-                                log.info("Sent server build request "+object);
+                                log.info("Sent server build request " + object);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

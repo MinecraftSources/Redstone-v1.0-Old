@@ -5,25 +5,20 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ShutdownListener;
-import com.rabbitmq.client.ShutdownSignalException;
+import com.rmb938.mn2.docker.db.database.NodeLoader;
+import com.rmb938.mn2.docker.db.database.ServerLoader;
+import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
+import com.rmb938.mn2.docker.db.entity.MN2Node;
+import com.rmb938.mn2.docker.db.entity.MN2Server;
+import com.rmb938.mn2.docker.db.entity.MN2ServerType;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
-import com.rmb938.mn2.docker.nc.database.NodeLoader;
-import com.rmb938.mn2.docker.nc.database.ServerLoader;
-import com.rmb938.mn2.docker.nc.database.ServerTypeLoader;
-import com.rmb938.mn2.docker.nc.entity.Node;
-import com.rmb938.mn2.docker.nc.entity.Server;
-import com.rmb938.mn2.docker.nc.entity.ServerType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 @Log4j2
 public class SlaveLoop implements Runnable {
@@ -32,9 +27,9 @@ public class SlaveLoop implements Runnable {
     private final ServerTypeLoader serverTypeLoader;
     private final ServerLoader serverLoader;
     private final NodeLoader nodeLoader;
-    private final Node node;
+    private final MN2Node node;
 
-    public SlaveLoop(RabbitMQ rabbitMQ, Node node, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws IOException {
+    public SlaveLoop(RabbitMQ rabbitMQ, MN2Node node, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws IOException {
         this.rabbitmq = rabbitMQ;
         this.node = node;
         this.serverTypeLoader = serverTypeLoader;
@@ -44,12 +39,12 @@ public class SlaveLoop implements Runnable {
 
     @Override
     public void run() {
-        Map<ServerType, SlaveLoopWorker> workers = new HashMap<ServerType, SlaveLoopWorker>();
+        Map<MN2ServerType, SlaveLoopWorker> workers = new HashMap<MN2ServerType, SlaveLoopWorker>();
         while(true) {
 
-            Iterator<Map.Entry<ServerType, SlaveLoopWorker>> iterator = workers.entrySet().iterator();
+            Iterator<Map.Entry<MN2ServerType, SlaveLoopWorker>> iterator = workers.entrySet().iterator();
             while (iterator.hasNext()) {
-                Map.Entry<ServerType, SlaveLoopWorker> workerEntry = iterator.next();
+                Map.Entry<MN2ServerType, SlaveLoopWorker> workerEntry = iterator.next();
                 if (serverTypeLoader.loadEntity(workerEntry.getKey().get_id()) == null) {
                     log.info("Removing slave worker loop " + workerEntry.getKey().getName());
                     workerEntry.getValue().stopWorking();
@@ -75,7 +70,7 @@ public class SlaveLoop implements Runnable {
             DBCursor dbCursor = serverLoader.getDb().findMany(serverLoader.getCollection(), new BasicDBObject("$and", and));
             while (dbCursor.hasNext()) {
                 DBObject dbObject = dbCursor.next();
-                Server server = serverLoader.loadEntity((ObjectId)dbObject.get("_id"));
+                MN2Server server = serverLoader.loadEntity((ObjectId)dbObject.get("_id"));
                 if (server != null) {
                     DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
 
