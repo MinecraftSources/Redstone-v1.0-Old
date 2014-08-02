@@ -1,8 +1,9 @@
 package com.rmb938.mn2.docker.nc.slave;
 
 import com.github.dockerjava.client.DockerClient;
+import com.github.dockerjava.client.model.Bind;
 import com.github.dockerjava.client.model.ContainerCreateResponse;
-import com.github.dockerjava.client.model.ExposedPort;
+import com.github.dockerjava.client.model.Volume;
 import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.nc.database.NodeLoader;
 import com.rmb938.mn2.docker.nc.database.ServerLoader;
@@ -106,15 +107,14 @@ public class SlaveLoopWorker {
             ContainerCreateResponse response = null;
             try {
                 log.info("Creating container for "+serverType.getName());
-                String imageId = dockerClient.inspectImageCmd("mnsquared/server").exec().getId();
                 response = dockerClient.createContainerCmd("mnsquared/server")
-                        .withEnv("MONGO_HOSTS="+System.getenv("MONGO_HOSTS"),
-                                "RABBITMQ_HOSTS="+System.getenv("RABBITMQ_HOSTS"),
-                                "RABBITMQ_USERNAME="+System.getenv("RABBITMQ_USERNAME"),
-                                "RABBITMQ_PASSWORD="+System.getenv("RABBITMQ_PASSWORD"),
-                                "RACKSPACE_USERNAME="+System.getenv("RACKSPACE_USERNAME"),
-                                "RACKSPACE_API="+System.getenv("RACKSPACE_API"),
-                                "MY_SERVER_ID="+serverId.toString())
+                        .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
+                                "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
+                                "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
+                                "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
+                                "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
+                                "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
+                                "MY_SERVER_ID=" + serverId.toString())
                         .withExposedPorts()
                         .exec();
             } catch (Exception ex) {
@@ -146,7 +146,7 @@ public class SlaveLoopWorker {
 
             try {
                 log.info("Starting container for "+serverType.getName());
-                dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).exec();
+                dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for server "+serverType.getName());
                 channel.basicNack(envelope.getDeliveryTag(), false, true);
