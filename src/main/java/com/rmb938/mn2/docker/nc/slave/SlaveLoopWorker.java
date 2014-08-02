@@ -134,7 +134,7 @@ public class SlaveLoopWorker {
                                 "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
                                 "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
                                 "MY_SERVER_ID=" + serverId.toString())
-                        //.withName(serverType.getName()+"."+server.getNumber())
+                        .withName(serverType.getName()+"."+server.getNumber())
                         .exec();
             } catch (Exception ex) {
                 ex.printStackTrace();
