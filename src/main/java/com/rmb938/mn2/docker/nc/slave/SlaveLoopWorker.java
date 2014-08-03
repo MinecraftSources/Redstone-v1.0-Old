@@ -111,7 +111,7 @@ public class SlaveLoopWorker {
             }
 
             if ((currentRamUsage+serverType.getMemory()) > node.getRam()) {
-                log.info("Not enough memory to create " + serverType.getName() + " re-queuing request");
+                log.error("Not enough memory to create " + serverType.getName() + " re-queuing request");
                 channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
