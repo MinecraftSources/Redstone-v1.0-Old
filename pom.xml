@@ -122,9 +122,6 @@
             <artifactId>json</artifactId>
             <version>20140107</version>
         </dependency>
-
-        <!-- Docker-Java -->
-
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java</artifactId>

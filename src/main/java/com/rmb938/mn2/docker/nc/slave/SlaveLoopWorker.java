@@ -84,17 +84,17 @@ public class SlaveLoopWorker {
             }
             object.put("ttl", object.getInt("ttl")-1);
 
-            MN2Node node = nodeLoader.loadEntity(_myNodeId);
-            if (node == null) {
-                log.error("Received build message but cannot find my node info");
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+            MN2ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
+            if (serverType == null) {
+                log.error("Server Type " + _myServerTypeId + " no longer exists destroying build request");
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
 
-            MN2ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
-            if (serverType == null) {
-                log.error("Server Type " + _myServerTypeId + " no longer exists destroying build request");
+            MN2Node node = nodeLoader.loadEntity(_myNodeId);
+            if (node == null) {
+                log.error("Received build message but cannot find my node info");
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -112,7 +112,7 @@ public class SlaveLoopWorker {
 
             if ((currentRamUsage+serverType.getMemory()) > node.getRam()) {
                 log.info("Not enough memory to create " + serverType.getName() + " re-queuing request");
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -121,6 +121,15 @@ public class SlaveLoopWorker {
             server.setServerType(serverType);
             server.setNode(node);
             ObjectId serverId = serverLoader.insertEntity(server);
+
+            server = serverLoader.loadEntity(serverId);
+
+            if (server == null) {
+                log.error("Created server is null");
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicAck(envelope.getDeliveryTag(), false);
+                return;
+            }
 
             DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
             ContainerCreateResponse response;
@@ -139,23 +148,14 @@ public class SlaveLoopWorker {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 log.error("Unable to create container for server " + serverType.getName());
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
 
             if (response == null) {
                 log.error("Null docker response");
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
-                channel.basicAck(envelope.getDeliveryTag(), false);
-                return;
-            }
-
-            server = serverLoader.loadEntity(serverId);
-
-            if (server == null) {
-                log.error("Created server is null");
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -171,7 +171,7 @@ public class SlaveLoopWorker {
                 dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for server " + serverType.getName());
-                channel.basicPublish("", consumerTag, MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
