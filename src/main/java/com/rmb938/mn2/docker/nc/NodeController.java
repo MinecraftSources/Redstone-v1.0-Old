@@ -4,9 +4,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.ServerAddress;
 import com.rabbitmq.client.Address;
-import com.rmb938.mn2.docker.db.database.NodeLoader;
-import com.rmb938.mn2.docker.db.database.ServerLoader;
-import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
+import com.rmb938.mn2.docker.db.database.*;
 import com.rmb938.mn2.docker.db.entity.MN2Node;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
@@ -90,8 +88,12 @@ public class NodeController {
         String myIP = System.getenv("MY_NODE_IP");
 
         NodeLoader nodeLoader = new NodeLoader(mongoDatabase);
-        ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase);
+        PluginLoader pluginLoader = new PluginLoader(mongoDatabase);
+        WorldLoader worldLoader = new WorldLoader(mongoDatabase);
+        ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase, pluginLoader, worldLoader);
         ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader);
+        BungeeTypeLoader bungeeTypeLoader = new BungeeTypeLoader(mongoDatabase, pluginLoader, nodeLoader, serverTypeLoader);
+        BungeeLoader bungeeLoader = new BungeeLoader(mongoDatabase, bungeeTypeLoader, nodeLoader);
 
         log.info("Finding Node info "+myIP);
         DBObject dbObject = mongoDatabase.findOne(nodeLoader.getCollection(), new BasicDBObject("host", myIP));
