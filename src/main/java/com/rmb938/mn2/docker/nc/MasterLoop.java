@@ -92,7 +92,7 @@ public class MasterLoop implements Runnable {
 
                 for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
-                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName() + "-server-worker");
+                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.get_id()+ "-server-worker");
                         int messages = declareOk.getMessageCount();
                         if (messages > 0) {
                             continue;
@@ -118,7 +118,7 @@ public class MasterLoop implements Runnable {
                             object.put("type", serverType.get_id().toString());
                             object.put("ttl", 3);
                             try {
-                                channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                                channel.basicPublish("", serverType.get_id() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                                 log.info("Sent server build request " + object);
                             } catch (IOException e) {
                                 e.printStackTrace();

@@ -15,6 +15,7 @@ import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 @Log4j2
 public class SlaveLoopWorker {
@@ -22,11 +23,12 @@ public class SlaveLoopWorker {
     private final ServerTypeLoader serverTypeLoader;
     private final ServerLoader serverLoader;
     private final NodeLoader nodeLoader;
-    private final SlaveConsumer consumer;
+    private SlaveConsumer consumer;
     private final Connection connection;
     private Channel channel;
     private final ObjectId _myServerTypeId;
     private final ObjectId _myNodeId;
+    private boolean stop = false;
 
     public SlaveLoopWorker(MN2ServerType serverType, MN2Node node, Connection connection, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws Exception {
         _myServerTypeId = serverType.get_id();
@@ -34,24 +36,33 @@ public class SlaveLoopWorker {
         this.connection = connection;
         channel = connection.createChannel();
         connection.addShutdownListener(Throwable::printStackTrace);
-        try {
-            log.info("Connecting to Queue "+serverType.getName()+"-server-worker");
-            channel.queueDeclarePassive(serverType.getName() + "-server-worker");
-        } catch (IOException e) {
-            channel = connection.createChannel();
-            log.info("Creating Queue "+serverType.getName()+"-server-worker");
-            channel.queueDeclare(serverType.getName()+"-server-worker", true, false, true, null);
-        }
-        channel.basicQos(1);
-        consumer = new SlaveConsumer(channel);
-        channel.basicConsume(serverType.getName()+"-server-worker", false, consumer);
+        consumerSetup();
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
         this.nodeLoader = nodeLoader;
     }
 
+    private void consumerSetup() throws IOException {
+        try {
+            log.info("Connecting to Queue "+_myServerTypeId.toString()+"-server-worker");
+            channel.queueDeclarePassive(_myServerTypeId.toString()+ "-server-worker");
+        } catch (IOException e) {
+            channel = connection.createChannel();
+            log.info("Creating Queue "+_myServerTypeId.toString()+"-server-worker");
+            HashMap<String, Object> args = new HashMap<>();
+            args.put("x-ha-policy", "all");
+            channel.queueDeclare(_myServerTypeId.toString()+"-server-worker", true, false, true, args);
+        }
+        channel.basicQos(1);
+        consumer = new SlaveConsumer(channel);
+        HashMap<String, Object> args = new HashMap<String, Object>();
+        args.put("x-cancel-on-ha-failover", true);
+        channel.basicConsume(_myServerTypeId.toString()+"-server-worker", false, args, consumer);
+    }
+
     public void stopWorking() {
         try {
+            stop = true;
             channel.basicCancel(consumer.getConsumerTag());
             channel.close();
             connection.close();
@@ -64,6 +75,13 @@ public class SlaveLoopWorker {
 
         public SlaveConsumer(Channel channel) {
             super(channel);
+        }
+
+        @Override
+        public void handleCancel(String consumerTag) throws IOException {
+            if (!stop) {
+                consumerSetup();
+            }
         }
 
         @Override
@@ -93,7 +111,7 @@ public class SlaveLoopWorker {
             MN2Node node = nodeLoader.loadEntity(_myNodeId);
             if (node == null) {
                 log.error("Received build message but cannot find my node info");
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -111,7 +129,7 @@ public class SlaveLoopWorker {
 
             if ((currentRamUsage+serverType.getMemory()) > node.getRam()) {
                 log.error("Not enough memory to create " + serverType.getName() + " re-queuing request");
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -127,18 +145,18 @@ public class SlaveLoopWorker {
             } catch (Exception ex) {
                 if (ex instanceof DuplicateKeyException) {
                     log.error("Error inserting new server for " + serverType.getName() + " duplicate");
-                    channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                    channel.basicPublish("", serverType.get_id() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                     channel.basicAck(envelope.getDeliveryTag(), false);
                 }
                 log.error("Error inserting new server for " + serverType.getName() + " " + ex.getMessage());
-                channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
 
             if (server == null) {
                 log.error("Created server is null");
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -160,14 +178,14 @@ public class SlaveLoopWorker {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 log.error("Unable to create container for server " + serverType.getName());
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
 
             if (response == null) {
                 log.error("Null docker response");
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
@@ -182,7 +200,7 @@ public class SlaveLoopWorker {
                 dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for server " + serverType.getName());
-                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicAck(envelope.getDeliveryTag(), false);
                 return;
             }
