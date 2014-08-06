@@ -4,6 +4,8 @@ import com.github.dockerjava.client.DockerClient;
 import com.github.dockerjava.client.model.Bind;
 import com.github.dockerjava.client.model.ContainerCreateResponse;
 import com.github.dockerjava.client.model.Volume;
+import com.mongodb.DuplicateKeyException;
+import com.mongodb.MongoException;
 import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.database.NodeLoader;
 import com.rmb938.mn2.docker.db.database.ServerLoader;
@@ -120,9 +122,22 @@ public class SlaveLoopWorker {
             MN2Server server = new MN2Server();
             server.setServerType(serverType);
             server.setNode(node);
-            ObjectId serverId = serverLoader.insertEntity(server);
+            server.setLastUpdate(System.currentTimeMillis()+300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
 
-            server = serverLoader.loadEntity(serverId);
+            try {
+                ObjectId serverId = serverLoader.insertEntity(server);
+                server = serverLoader.loadEntity(serverId);
+            } catch (Exception ex) {
+                if (ex instanceof DuplicateKeyException) {
+                    log.error("Error inserting new server for " + serverType.getName() + " duplicate");
+                    channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                    channel.basicAck(envelope.getDeliveryTag(), false);
+                }
+                log.error("Error inserting new server for " + serverType.getName() + " " + ex.getMessage());
+                channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                channel.basicAck(envelope.getDeliveryTag(), false);
+                return;
+            }
 
             if (server == null) {
                 log.error("Created server is null");
@@ -142,7 +157,7 @@ public class SlaveLoopWorker {
                                 "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
                                 "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
                                 "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
-                                "MY_SERVER_ID=" + serverId.toString())
+                                "MY_SERVER_ID=" + server.get_id().toString())
                         .withName(serverType.getName()+"."+server.getNumber())
                         .exec();
             } catch (Exception ex) {
@@ -162,7 +177,6 @@ public class SlaveLoopWorker {
 
             String containerId = response.getId();
             server.setContainerId(containerId);
-            server.setLastUpdate(System.currentTimeMillis()+300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
 
             serverLoader.saveEntity(server);
 
