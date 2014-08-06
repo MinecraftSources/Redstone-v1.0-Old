@@ -88,6 +88,7 @@ public class MasterLoop implements Runnable {
                         serverLoader.getDb().remove(serverLoader.getCollection(), dbObject);
                     }
                 }
+                dbCursor.close();
 
                 for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
