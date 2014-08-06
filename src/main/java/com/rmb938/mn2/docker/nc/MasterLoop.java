@@ -1,6 +1,9 @@
 package com.rmb938.mn2.docker.nc;
 
+import com.github.dockerjava.client.DockerClient;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -9,6 +12,7 @@ import com.rmb938.mn2.docker.db.database.NodeLoader;
 import com.rmb938.mn2.docker.db.database.ServerLoader;
 import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
 import com.rmb938.mn2.docker.db.entity.MN2Node;
+import com.rmb938.mn2.docker.db.entity.MN2Server;
 import com.rmb938.mn2.docker.db.entity.MN2ServerType;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import lombok.extern.log4j.Log4j2;
@@ -49,9 +53,43 @@ public class MasterLoop implements Runnable {
             log.info("Sending Update");
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
+                /*BasicDBList and = new BasicDBList();
+            and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
+            and.add(new BasicDBObject("node", node.getAddress()));
+            DBObject query = new BasicDBObject("$and", and);*/
+
+                DBObject query = new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000));
+
+                DBCursor dbCursor = serverLoader.getDb().findMany(serverLoader.getCollection(), query);
+                while (dbCursor.hasNext()) {
+                    DBObject dbObject = dbCursor.next();
+                    MN2Server server = serverLoader.loadEntity((ObjectId) dbObject.get("_id"));
+                    if (server != null) {
+                        DockerClient dockerClient = new DockerClient("http://" + server.getNode().getAddress() + ":4243");
+
+                        try {
+                            log.info("Killing dead server " + server.getServerType().getName());
+                            dockerClient.killContainerCmd(server.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.info("Error killing dead server");
+                            continue;
+                        }
+                        try {
+                            log.info("Remove dead server container " + server.getServerType().getName());
+                            dockerClient.removeContainerCmd(server.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.info("Error removing dead server");
+                            continue;
+                        }
+
+                        log.info("Removing dead server " + server.getServerType().getName());
+                        serverLoader.getDb().remove(serverLoader.getCollection(), dbObject);
+                    }
+                }
+
                 for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
                     try {
-                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName()+"-server-worker");
+                        AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.getName() + "-server-worker");
                         int messages = declareOk.getMessageCount();
                         if (messages > 0) {
                             continue;
@@ -77,7 +115,7 @@ public class MasterLoop implements Runnable {
                             object.put("type", serverType.get_id().toString());
                             object.put("ttl", 3);
                             try {
-                                channel.basicPublish("", serverType.getName()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                                channel.basicPublish("", serverType.getName() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                                 log.info("Sent server build request " + object);
                             } catch (IOException e) {
                                 e.printStackTrace();

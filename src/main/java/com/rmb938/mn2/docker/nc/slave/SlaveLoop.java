@@ -62,38 +62,6 @@ public class SlaveLoop implements Runnable {
                 }
             });
 
-            BasicDBList and = new BasicDBList();
-            and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$ne", 0)));
-            and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
-            and.add(new BasicDBObject("node", node.getAddress()));
-
-            DBCursor dbCursor = serverLoader.getDb().findMany(serverLoader.getCollection(), new BasicDBObject("$and", and));
-            while (dbCursor.hasNext()) {
-                DBObject dbObject = dbCursor.next();
-                MN2Server server = serverLoader.loadEntity((ObjectId)dbObject.get("_id"));
-                if (server != null) {
-                    DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
-
-                    try {
-                        log.info("Killing dead server "+server.getServerType().getName());
-                        dockerClient.killContainerCmd(server.getContainerId()).exec();
-                    } catch (Exception ex) {
-                        log.info("Error killing dead server");
-                        continue;
-                    }
-                    try {
-                        log.info("Remove dead server container "+server.getServerType().getName());
-                        dockerClient.removeContainerCmd(server.getContainerId()).exec();
-                    } catch (Exception ex) {
-                        log.info("Error removing dead server");
-                        continue;
-                    }
-
-                    log.info("Removing dead server "+server.getServerType().getName());
-                    serverLoader.getDb().remove(serverLoader.getCollection(), dbObject);
-                }
-            }
-
             try {
                 Thread.sleep(30000);
             } catch (InterruptedException e) {

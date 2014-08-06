@@ -121,6 +121,14 @@ public class NodeController {
             e.printStackTrace();
         }
 
+        try {
+            log.info("Starting Bungee Loop");
+            BungeeLoop bungeeLoop = new BungeeLoop(node, bungeeTypeLoader, bungeeLoader);
+            executorService.submit(bungeeLoop);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
 }
