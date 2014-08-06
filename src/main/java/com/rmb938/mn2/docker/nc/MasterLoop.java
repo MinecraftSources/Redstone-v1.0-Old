@@ -54,9 +54,9 @@ public class MasterLoop implements Runnable {
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
                 /*BasicDBList and = new BasicDBList();
-            and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
-            and.add(new BasicDBObject("node", node.getAddress()));
-            DBObject query = new BasicDBObject("$and", and);*/
+                and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
+                and.add(new BasicDBObject("node", node.getAddress()));
+                DBObject query = new BasicDBObject("$and", and);*/
 
                 DBObject query = new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000));
 
@@ -65,21 +65,23 @@ public class MasterLoop implements Runnable {
                     DBObject dbObject = dbCursor.next();
                     MN2Server server = serverLoader.loadEntity((ObjectId) dbObject.get("_id"));
                     if (server != null) {
-                        DockerClient dockerClient = new DockerClient("http://" + server.getNode().getAddress() + ":4243");
+                        if (server.getNode() != null) {
+                            DockerClient dockerClient = new DockerClient("http://" + server.getNode().getAddress() + ":4243");
 
-                        try {
-                            log.info("Killing dead server " + server.getServerType().getName());
-                            dockerClient.killContainerCmd(server.getContainerId()).exec();
-                        } catch (Exception ex) {
-                            log.info("Error killing dead server");
-                            continue;
-                        }
-                        try {
-                            log.info("Remove dead server container " + server.getServerType().getName());
-                            dockerClient.removeContainerCmd(server.getContainerId()).exec();
-                        } catch (Exception ex) {
-                            log.info("Error removing dead server");
-                            continue;
+                            try {
+                                log.info("Killing dead server " + server.getServerType().getName());
+                                dockerClient.killContainerCmd(server.getContainerId()).exec();
+                            } catch (Exception ex) {
+                                log.error("Error killing dead server "+ex.getMessage());
+                                continue;
+                            }
+                            try {
+                                log.info("Remove dead server container " + server.getServerType().getName());
+                                dockerClient.removeContainerCmd(server.getContainerId()).exec();
+                            } catch (Exception ex) {
+                                log.error("Error removing dead server "+ex.getMessage());
+                                continue;
+                            }
                         }
 
                         log.info("Removing dead server " + server.getServerType().getName());
