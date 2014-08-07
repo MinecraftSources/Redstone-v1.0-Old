@@ -186,8 +186,18 @@ public class MasterLoop implements Runnable {
                     e1.printStackTrace();
                 }
             }
-            //bungee exchange doesn't exist yet
-            return;
+            try {
+                channel.exchangeDeclare("bungee-worker", "direct");
+            } catch (IOException e) {
+                if (!channel.isOpen()) {
+                    try {
+                        channel = connection.createChannel();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+                return;
+            }
         }
 
         for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes()) {
