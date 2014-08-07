@@ -8,6 +8,7 @@ import com.rmb938.mn2.docker.db.database.*;
 import com.rmb938.mn2.docker.db.entity.MN2Node;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
+import com.rmb938.mn2.docker.nc.slave.BungeeLoopWorker;
 import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -107,7 +108,7 @@ public class NodeController {
 
         try {
             log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader);
+            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();
@@ -122,10 +123,8 @@ public class NodeController {
         }
 
         try {
-            log.info("Starting Bungee Loop");
-            BungeeLoop bungeeLoop = new BungeeLoop(node, bungeeTypeLoader, bungeeLoader);
-            executorService.submit(bungeeLoop);
-        } catch (Exception e) {
+            BungeeLoopWorker bungeeLoopWorker = new BungeeLoopWorker(node.get_id(), rabbitMQ, bungeeTypeLoader, bungeeLoader, nodeLoader);
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
