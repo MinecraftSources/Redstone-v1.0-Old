@@ -8,7 +8,6 @@ import com.rmb938.mn2.docker.db.database.*;
 import com.rmb938.mn2.docker.db.entity.MN2Node;
 import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
-import com.rmb938.mn2.docker.nc.slave.BungeeLoopWorker;
 import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -119,12 +118,6 @@ public class NodeController {
             SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, node, serverTypeLoader, serverLoader, nodeLoader);
             executorService.submit(slaveLoop);
         } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        try {
-            BungeeLoopWorker bungeeLoopWorker = new BungeeLoopWorker(node.get_id(), rabbitMQ, bungeeTypeLoader, bungeeLoader, nodeLoader);
-        } catch (IOException e) {
             e.printStackTrace();
         }
 

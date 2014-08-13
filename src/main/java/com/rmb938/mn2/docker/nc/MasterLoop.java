@@ -1,6 +1,9 @@
 package com.rmb938.mn2.docker.nc;
 
 import com.github.dockerjava.client.DockerClient;
+import com.github.dockerjava.client.NotFoundException;
+import com.github.dockerjava.client.command.CreateContainerResponse;
+import com.github.dockerjava.client.model.*;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
@@ -82,20 +85,31 @@ public class MasterLoop implements Runnable {
             if (server != null) {
                 if (server.getNode() != null) {
                     DockerClient dockerClient = new DockerClient("http://" + server.getNode().getAddress() + ":4243");
-
+                    boolean found = true;
                     try {
-                        log.info("Killing dead server " + server.getServerType().getName());
-                        dockerClient.killContainerCmd(server.getContainerId()).exec();
+                        dockerClient.inspectContainerCmd(server.getContainerId()).exec();
                     } catch (Exception ex) {
-                        log.error("Error killing dead server "+ex.getMessage());
-                        continue;
+                        if (ex instanceof NotFoundException) {
+                            found = false;
+                        } else {
+                            log.error("Error checking if bungee container exists");
+                            continue;
+                        }
                     }
-                    try {
-                        log.info("Remove dead server container " + server.getServerType().getName());
-                        dockerClient.removeContainerCmd(server.getContainerId()).exec();
-                    } catch (Exception ex) {
-                        log.error("Error removing dead server "+ex.getMessage());
-                        continue;
+                    if (found) {
+                        try {
+                            log.info("Killing dead server " + server.getServerType().getName());
+                            dockerClient.killContainerCmd(server.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.error("Error killing dead server " + ex.getMessage());
+                        }
+                        try {
+                            log.info("Remove dead server container " + server.getServerType().getName());
+                            dockerClient.removeContainerCmd(server.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.error("Error removing dead server " + ex.getMessage());
+                            continue;
+                        }
                     }
                 }
 
@@ -144,8 +158,15 @@ public class MasterLoop implements Runnable {
     }
 
     private void bungeeRun() {
+        MN2Node node = nodeLoader.loadEntity(_myNodeId);
+        if (node == null) {
+            log.error("Cannot find my node");
+            return;
+        }
+
         BasicDBList and = new BasicDBList();
         and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
+        and.add(new BasicDBObject("node", node.get_id()));
         DBCursor dbCursor = bungeeLoader.getDb().findMany(bungeeLoader.getCollection(), and);
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
@@ -153,20 +174,31 @@ public class MasterLoop implements Runnable {
             if (bungee != null) {
                 if (bungee.getNode() != null) {
                     DockerClient dockerClient = new DockerClient("http://" + bungee.getNode().getAddress() + ":4243");
-
+                    boolean found = true;
                     try {
-                        log.info("Killing dead server " + bungee.getBungeeType().getName());
-                        dockerClient.killContainerCmd(bungee.getContainerId()).exec();
+                        dockerClient.inspectContainerCmd(bungee.getContainerId()).exec();
                     } catch (Exception ex) {
-                        log.error("Error killing dead bungee "+ex.getMessage());
-                        continue;
+                        if (ex instanceof NotFoundException) {
+                            found = false;
+                        } else {
+                            log.error("Error checking if bungee container exists");
+                            continue;
+                        }
                     }
-                    try {
-                        log.info("Remove dead server container " + bungee.getBungeeType().getName());
-                        dockerClient.removeContainerCmd(bungee.getContainerId()).exec();
-                    } catch (Exception ex) {
-                        log.error("Error removing dead bungee "+ex.getMessage());
-                        continue;
+                    if (found) {
+                        try {
+                            log.info("Killing dead bungee " + bungee.getBungeeType().getName());
+                            dockerClient.killContainerCmd(bungee.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.error("Error killing dead bungee " + ex.getMessage());
+                        }
+                        try {
+                            log.info("Remove dead server container " + bungee.getBungeeType().getName());
+                            dockerClient.removeContainerCmd(bungee.getContainerId()).exec();
+                        } catch (Exception ex) {
+                            log.error("Error removing dead bungee " + ex.getMessage());
+                            continue;
+                        }
                     }
                 }
 
@@ -176,43 +208,55 @@ public class MasterLoop implements Runnable {
         }
         dbCursor.close();
 
-        try {
-            channel.exchangeDeclarePassive("bungee-worker");
-        } catch (Exception ex) {
-            if (!channel.isOpen()) {
-                try {
-                    channel = connection.createChannel();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-            }
-            try {
-                channel.exchangeDeclare("bungee-worker", "direct");
-            } catch (IOException e) {
-                if (!channel.isOpen()) {
-                    try {
-                        channel = connection.createChannel();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
-                    }
-                }
-                return;
-            }
-        }
+        for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes(node)) {
+            MN2Bungee bungee = new MN2Bungee();
+            bungee.setNode(node);
+            bungee.setBungeeType(bungeeType);
+            bungee.setLastUpdate(System.currentTimeMillis() + 300000);
 
-        for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes()) {
-            for (MN2Node node : bungeeType.getNodes()) {
-                if (bungeeLoader.nodeBungeeType(node, bungeeType) == null) {
-                    JSONObject object = new JSONObject();
-                    object.put("type", bungeeType.get_id().toString());
-                    object.put("node", node.get_id());
-                    try {
-                        channel.basicPublish("bungee-worker", node.get_id().toString(), null, object.toString().getBytes());
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                }
+            bungeeLoader.saveEntity(bungee);
+
+            DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
+            CreateContainerResponse response;
+            try {
+                log.info("Creating container for "+bungeeType.getName());
+                response = dockerClient.createContainerCmd("mnsquared/bungee")
+                        .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
+                                "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
+                                "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
+                                "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
+                                "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
+                                "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
+                                "MY_BUNGEE_ID=" + bungee.get_id().toString())
+                        .withName(bungeeType.getName())
+                        .exec();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                log.error("Unable to create container for bungee " + bungeeType.getName());
+                break;
             }
+
+            if (response == null) {
+                log.error("Null docker response");
+                break;
+            }
+
+            String containerId = response.getId();
+            bungee.setContainerId(containerId);
+
+            bungeeLoader.saveEntity(bungee);
+
+            try {
+                log.info("Starting container for "+bungeeType.getName());
+                //TODO: set actual IP instead of 0.0.0.0
+                dockerClient.startContainerCmd(containerId).withPortBindings(new Ports(new ExposedPort("tcp", 25565), new Ports.Binding("0.0.0.0", 25565)))
+                        .withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
+            } catch (Exception ex) {
+                log.error("Unable to start container for bungee " + bungeeType.getName());
+                break;
+            }
+            //TODO: allow loop for multiple IPs
+            break;
         }
     }
 }

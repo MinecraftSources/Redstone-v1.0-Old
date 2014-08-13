@@ -1,6 +1,7 @@
 package com.rmb938.mn2.docker.nc.slave;
 
 import com.github.dockerjava.client.DockerClient;
+import com.github.dockerjava.client.command.CreateContainerResponse;
 import com.github.dockerjava.client.model.*;
 import com.mongodb.DuplicateKeyException;
 import com.rabbitmq.client.*;
@@ -162,7 +163,7 @@ public class SlaveLoopWorker {
             }
 
             DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
-            ContainerCreateResponse response;
+            CreateContainerResponse response;
             try {
                 log.info("Creating container for "+serverType.getName());
                 response = dockerClient.createContainerCmd("mnsquared/server")
