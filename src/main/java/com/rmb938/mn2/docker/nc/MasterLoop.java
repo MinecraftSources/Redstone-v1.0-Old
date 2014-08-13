@@ -167,7 +167,7 @@ public class MasterLoop implements Runnable {
         BasicDBList and = new BasicDBList();
         and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
         and.add(new BasicDBObject("node", node.get_id()));
-        DBCursor dbCursor = bungeeLoader.getDb().findMany(bungeeLoader.getCollection(), and);
+        DBCursor dbCursor = bungeeLoader.getDb().findMany(bungeeLoader.getCollection(), new BasicDBObject("$and", and));
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
             MN2Bungee bungee = bungeeLoader.loadEntity((ObjectId) dbObject.get("_id"));
