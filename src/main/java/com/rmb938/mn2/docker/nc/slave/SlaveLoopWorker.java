@@ -1,6 +1,7 @@
 package com.rmb938.mn2.docker.nc.slave;
 
 import com.github.dockerjava.client.DockerClient;
+import com.github.dockerjava.client.NotFoundException;
 import com.github.dockerjava.client.command.CreateContainerResponse;
 import com.github.dockerjava.client.model.*;
 import com.mongodb.DuplicateKeyException;
@@ -102,6 +103,7 @@ public class SlaveLoopWorker {
             }
             object.put("ttl", object.getInt("ttl")-1);
 
+            log.info("Setting Server Type");
             MN2ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
             if (serverType == null) {
                 log.error("Server Type " + _myServerTypeId + " no longer exists destroying build request");
@@ -109,6 +111,7 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            log.info("Getting Node");
             MN2Node node = nodeLoader.loadEntity(_myNodeId);
             if (node == null) {
                 log.error("Received build message but cannot find my node info");
@@ -123,6 +126,7 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            log.info("Checking Ram");
             int currentRamUsage = 0;
             for (MN2Server server : serverLoader.nodeServers(node)) {
                 currentRamUsage += server.getServerType().getMemory();
@@ -135,6 +139,7 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            log.info("Creating Server");
             MN2Server server = new MN2Server();
             server.setServerType(serverType);
             server.setNode(node);
@@ -146,10 +151,9 @@ public class SlaveLoopWorker {
             } catch (Exception ex) {
                 if (ex instanceof DuplicateKeyException) {
                     log.error("Error inserting new server for " + serverType.getName() + " duplicate");
-                    channel.basicPublish("", serverType.get_id() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
-                    channel.basicNack(envelope.getDeliveryTag(), false, false);
+                } else {
+                    log.error("Error inserting new server for " + serverType.getName() + " " + ex.getMessage());
                 }
-                log.error("Error inserting new server for " + serverType.getName() + " " + ex.getMessage());
                 channel.basicPublish("", serverType.get_id() + "-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicNack(envelope.getDeliveryTag(), false, false);
                 return;
@@ -162,9 +166,23 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            log.info("Creating Docker Container");
             DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
+
             CreateContainerResponse response;
             try {
+                for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
+                    String name = container.getNames()[0];
+                    if (name.equals("/"+serverType.getName()+"."+server.getNumber())) {
+                        try {
+                            dockerClient.killContainerCmd(container.getId()).exec();
+                        } catch (Exception ignored) {
+                        }
+                        dockerClient.removeContainerCmd(container.getId()).exec();
+                        break;
+                    }
+                }
+
                 log.info("Creating container for "+serverType.getName());
                 response = dockerClient.createContainerCmd("mnsquared/server")
                         .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
@@ -178,7 +196,7 @@ public class SlaveLoopWorker {
                         .exec();
             } catch (Exception ex) {
                 ex.printStackTrace();
-                log.error("Unable to create container for server " + serverType.getName());
+                log.error("Unable to create container for server " + serverType.getName()+"."+server.getNumber());
                 channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
                 channel.basicNack(envelope.getDeliveryTag(), false, false);
                 return;
@@ -191,13 +209,14 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            log.info("Saving container Info");
             String containerId = response.getId();
             server.setContainerId(containerId);
 
             serverLoader.saveEntity(server);
 
             try {
-                log.info("Starting container for "+serverType.getName());
+                log.info("Starting container for "+serverType.getName()+"."+server.getNumber());
                 dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for server " + serverType.getName());

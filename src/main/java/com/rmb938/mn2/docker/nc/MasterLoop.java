@@ -21,6 +21,7 @@ import org.json.JSONObject;
 
 import javax.xml.soap.Node;
 import java.io.IOException;
+import java.util.ArrayList;
 
 
 @Log4j2
@@ -61,6 +62,7 @@ public class MasterLoop implements Runnable {
                 serverRun();
                 bungeeRun();
             }
+            log.info("Sleeping");
             try {
                 Thread.sleep(10000);
             } catch (InterruptedException e) {
@@ -71,6 +73,7 @@ public class MasterLoop implements Runnable {
     }
 
     private void serverRun() {
+        log.info("Server Master Run");
         /*BasicDBList and = new BasicDBList();
                 and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
                 and.add(new BasicDBObject("node", node.getAddress()));
@@ -98,13 +101,13 @@ public class MasterLoop implements Runnable {
                     }
                     if (found) {
                         try {
-                            log.info("Killing dead server " + server.getServerType().getName());
+                            log.info("Killing dead server " + server.getServerType().getName() + "." + server.getNumber());
                             dockerClient.killContainerCmd(server.getContainerId()).exec();
                         } catch (Exception ex) {
                             log.error("Error killing dead server " + ex.getMessage());
                         }
                         try {
-                            log.info("Remove dead server container " + server.getServerType().getName());
+                            log.info("Remove dead server container " + server.getServerType().getName() + "." + server.getNumber());
                             dockerClient.removeContainerCmd(server.getContainerId()).exec();
                         } catch (Exception ex) {
                             log.error("Error removing dead server " + ex.getMessage());
@@ -113,7 +116,7 @@ public class MasterLoop implements Runnable {
                     }
                 }
 
-                log.info("Removing dead server " + server.getServerType().getName());
+                log.info("Removing dead server " + server.getServerType().getName() + "." + server.getNumber());
                 serverLoader.getDb().remove(serverLoader.getCollection(), dbObject);
             }
         }
@@ -155,15 +158,18 @@ public class MasterLoop implements Runnable {
                 }
             }
         }
+        log.info("Finished Server Master Run");
     }
 
     private void bungeeRun() {
+        log.info("Bungee Master Run");
         MN2Node node = nodeLoader.loadEntity(_myNodeId);
         if (node == null) {
             log.error("Cannot find my node");
             return;
         }
 
+        log.info("Removing Dead Bungees");
         BasicDBList and = new BasicDBList();
         and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
         and.add(new BasicDBObject("node", node.get_id()));
@@ -208,17 +214,36 @@ public class MasterLoop implements Runnable {
         }
         dbCursor.close();
 
+        log.info("Looking for bungees to create");
         for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes(node)) {
             MN2Bungee bungee = new MN2Bungee();
             bungee.setNode(node);
             bungee.setBungeeType(bungeeType);
             bungee.setLastUpdate(System.currentTimeMillis() + 300000);
 
-            bungeeLoader.saveEntity(bungee);
+            ObjectId objectId = bungeeLoader.insertEntity(bungee);
+            bungee = bungeeLoader.loadEntity(objectId);
+
+            if (bungee == null) {
+                log.error("Created bungee is null");
+                continue;
+            }
 
             DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
             CreateContainerResponse response;
             try {
+                for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
+                    String name = container.getNames()[0];
+                    if (name.equals(bungeeType.getName())) {
+                        try {
+                            dockerClient.killContainerCmd(container.getId()).exec();
+                        } catch (Exception ignored) {
+                        }
+                        dockerClient.removeContainerCmd(container.getId()).exec();
+                        break;
+                    }
+                }
+
                 log.info("Creating container for "+bungeeType.getName());
                 response = dockerClient.createContainerCmd("mnsquared/bungee")
                         .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
@@ -228,17 +253,18 @@ public class MasterLoop implements Runnable {
                                 "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
                                 "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
                                 "MY_BUNGEE_ID=" + bungee.get_id().toString())
+                        .withExposedPorts(new ExposedPort("tcp", 25565))
                         .withName(bungeeType.getName())
                         .exec();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 log.error("Unable to create container for bungee " + bungeeType.getName());
-                break;
+                continue;
             }
 
             if (response == null) {
                 log.error("Null docker response");
-                break;
+                continue;
             }
 
             String containerId = response.getId();
@@ -253,10 +279,11 @@ public class MasterLoop implements Runnable {
                         .withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for bungee " + bungeeType.getName());
-                break;
+                continue;
             }
             //TODO: allow loop for multiple IPs
             break;
         }
+        log.info("Finished Bungee Master Loop");
     }
 }

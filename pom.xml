@@ -74,6 +74,7 @@
                                     <include>org.apache.httpcomponents:*:*</include>
                                     <include>org.apache.commons:commons-pool2:*</include>
                                     <include>commons-logging:commons-logging:*</include>
+                                    <include>commons-lang:commons-lang:*</include>
                                     <include>com.google.guava:guava:*</include>
                                     <include>org.slf4j:slf4j-api:*</include>
                                     <include>org.slf4j:jul-to-slf4j:*</include>
