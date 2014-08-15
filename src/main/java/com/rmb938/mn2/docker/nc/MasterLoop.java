@@ -19,9 +19,7 @@ import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
-import javax.xml.soap.Node;
 import java.io.IOException;
-import java.util.ArrayList;
 
 
 @Log4j2
@@ -216,6 +214,10 @@ public class MasterLoop implements Runnable {
 
         log.info("Looking for bungees to create");
         for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes(node)) {
+            if (bungeeLoader.nodeBungeeType(node, bungeeType) != null) {
+                //already has this bungee running
+                continue;
+            }
             MN2Bungee bungee = new MN2Bungee();
             bungee.setNode(node);
             bungee.setBungeeType(bungeeType);
