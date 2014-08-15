@@ -264,6 +264,7 @@ public class MasterLoop implements Runnable {
                                     "MY_BUNGEE_ID=" + bungee.get_id().toString())
                             .withExposedPorts(new ExposedPort("tcp", 25565))
                             .withName(bungeeType.getName())
+                            .withStdinOpen(true)
                             .exec();
                 } catch (Exception ex) {
                     ex.printStackTrace();
