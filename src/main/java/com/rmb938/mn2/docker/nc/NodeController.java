@@ -87,12 +87,12 @@ public class NodeController {
 
         String myIP = System.getenv("MY_NODE_IP");
 
-        NodeLoader nodeLoader = new NodeLoader(mongoDatabase);
         PluginLoader pluginLoader = new PluginLoader(mongoDatabase);
         WorldLoader worldLoader = new WorldLoader(mongoDatabase);
         ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase, pluginLoader, worldLoader);
+        BungeeTypeLoader bungeeTypeLoader = new BungeeTypeLoader(mongoDatabase, pluginLoader, serverTypeLoader);
+        NodeLoader nodeLoader = new NodeLoader(mongoDatabase, bungeeTypeLoader);
         ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader);
-        BungeeTypeLoader bungeeTypeLoader = new BungeeTypeLoader(mongoDatabase, pluginLoader, nodeLoader, serverTypeLoader);
         BungeeLoader bungeeLoader = new BungeeLoader(mongoDatabase, bungeeTypeLoader, nodeLoader);
 
         log.info("Finding Node info "+myIP);

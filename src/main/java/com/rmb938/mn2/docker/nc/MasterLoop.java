@@ -58,8 +58,9 @@ public class MasterLoop implements Runnable {
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             if (amIMaster()) {
                 serverRun();
-                bungeeRun();
+                bungeeMasterRun();
             }
+            bungeeRun();
             log.info("Sleeping");
             try {
                 Thread.sleep(10000);
@@ -113,8 +114,11 @@ public class MasterLoop implements Runnable {
                         }
                     }
                 }
-
-                log.info("Removing dead server " + server.getServerType().getName() + "." + server.getNumber());
+                if (server.getServerType() != null) {
+                    log.info("Removing dead server " + server.getServerType().getName() + "." + server.getNumber());
+                } else {
+                    log.info("Removing dead server " + server.get_id() + "." + server.getNumber());
+                }
                 serverLoader.getDb().remove(serverLoader.getCollection(), dbObject);
             }
         }
@@ -159,19 +163,10 @@ public class MasterLoop implements Runnable {
         log.info("Finished Server Master Run");
     }
 
-    private void bungeeRun() {
+    public void bungeeMasterRun() {
         log.info("Bungee Master Run");
-        MN2Node node = nodeLoader.loadEntity(_myNodeId);
-        if (node == null) {
-            log.error("Cannot find my node");
-            return;
-        }
-
         log.info("Removing Dead Bungees");
-        BasicDBList and = new BasicDBList();
-        and.add(new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
-        and.add(new BasicDBObject("node", node.get_id()));
-        DBCursor dbCursor = bungeeLoader.getDb().findMany(bungeeLoader.getCollection(), new BasicDBObject("$and", and));
+        DBCursor dbCursor = bungeeLoader.getDb().findMany(bungeeLoader.getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis()-60000)));
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
             MN2Bungee bungee = bungeeLoader.loadEntity((ObjectId) dbObject.get("_id"));
@@ -206,86 +201,96 @@ public class MasterLoop implements Runnable {
                     }
                 }
 
-                log.info("Removing dead bungee " + bungee.getBungeeType().getName());
+                if (bungee.getBungeeType() != null) {
+                    log.info("Removing dead bungee " + bungee.getBungeeType().getName());
+                } else {
+                    log.info("Removing dead bungee " + bungee.get_id());
+                }
                 bungeeLoader.removeEntity(bungee);
             }
         }
         dbCursor.close();
+        log.info("Finished Bungee Master Run");
+    }
 
-        log.info("Looking for bungees to create");
-        for (MN2BungeeType bungeeType : bungeeTypeLoader.getTypes(node)) {
-            if (bungeeLoader.nodeBungeeType(node, bungeeType) != null) {
-                //already has this bungee running
-                continue;
-            }
-            MN2Bungee bungee = new MN2Bungee();
-            bungee.setNode(node);
-            bungee.setBungeeType(bungeeType);
-            bungee.setLastUpdate(System.currentTimeMillis() + 300000);
+    private void bungeeRun() {
+        log.info("Bungee Run");
+        MN2Node node = nodeLoader.loadEntity(_myNodeId);
+        if (node == null) {
+            log.error("Cannot find my node");
+            return;
+        }
 
-            ObjectId objectId = bungeeLoader.insertEntity(bungee);
-            bungee = bungeeLoader.loadEntity(objectId);
+        if (node.getBungeeType() != null) {
+            log.info("Looking for bungee to create");
+            if (bungeeLoader.nodeBungee(node) == null) {
+                MN2BungeeType bungeeType = node.getBungeeType();
+                MN2Bungee bungee = new MN2Bungee();
+                bungee.setNode(node);
+                bungee.setBungeeType(bungeeType);
+                bungee.setLastUpdate(System.currentTimeMillis() + 300000);
 
-            if (bungee == null) {
-                log.error("Created bungee is null");
-                continue;
-            }
+                ObjectId objectId = bungeeLoader.insertEntity(bungee);
+                bungee = bungeeLoader.loadEntity(objectId);
 
-            DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
-            CreateContainerResponse response;
-            try {
-                for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
-                    String name = container.getNames()[0];
-                    if (name.equals(bungeeType.getName())) {
-                        try {
-                            dockerClient.killContainerCmd(container.getId()).exec();
-                        } catch (Exception ignored) {
-                        }
-                        dockerClient.removeContainerCmd(container.getId()).exec();
-                        break;
-                    }
+                if (bungee == null) {
+                    log.error("Created bungee is null");
+                    return;
                 }
 
-                log.info("Creating container for "+bungeeType.getName());
-                response = dockerClient.createContainerCmd("mnsquared/bungee")
-                        .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
-                                "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
-                                "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
-                                "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
-                                "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
-                                "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
-                                "MY_BUNGEE_ID=" + bungee.get_id().toString())
-                        .withExposedPorts(new ExposedPort("tcp", 25565))
-                        .withName(bungeeType.getName())
-                        .exec();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                log.error("Unable to create container for bungee " + bungeeType.getName());
-                continue;
+                DockerClient dockerClient = new DockerClient("http://" + node.getAddress() + ":4243");
+                CreateContainerResponse response;
+                try {
+                    for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
+                        String name = container.getNames()[0];
+                        if (name.equals("/" + bungeeType.getName())) {
+                            try {
+                                dockerClient.killContainerCmd(container.getId()).exec();
+                            } catch (Exception ignored) {
+                            }
+                            dockerClient.removeContainerCmd(container.getId()).exec();
+                            break;
+                        }
+                    }
+
+                    log.info("Creating container for " + bungeeType.getName());
+                    response = dockerClient.createContainerCmd("mnsquared/bungee")
+                            .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
+                                    "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
+                                    "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
+                                    "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
+                                    "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
+                                    "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
+                                    "MY_BUNGEE_ID=" + bungee.get_id().toString())
+                            .withExposedPorts(new ExposedPort("tcp", 25565))
+                            .withName(bungeeType.getName())
+                            .exec();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    log.error("Unable to create container for bungee " + bungeeType.getName());
+                    return;
+                }
+
+                if (response == null) {
+                    log.error("Null docker response");
+                    return;
+                }
+
+                String containerId = response.getId();
+                bungee.setContainerId(containerId);
+
+                bungeeLoader.saveEntity(bungee);
+
+                try {
+                    log.info("Starting container for " + bungeeType.getName());
+                    dockerClient.startContainerCmd(containerId).withPortBindings(new Ports(new ExposedPort("tcp", 25565), new Ports.Binding("0.0.0.0", 25565)))
+                            .withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
+                } catch (Exception ex) {
+                    log.error("Unable to start container for bungee " + bungeeType.getName());
+                    return;
+                }
             }
-
-            if (response == null) {
-                log.error("Null docker response");
-                continue;
-            }
-
-            String containerId = response.getId();
-            bungee.setContainerId(containerId);
-
-            bungeeLoader.saveEntity(bungee);
-
-            try {
-                log.info("Starting container for "+bungeeType.getName());
-                //TODO: set actual IP instead of 0.0.0.0
-                dockerClient.startContainerCmd(containerId).withPortBindings(new Ports(new ExposedPort("tcp", 25565), new Ports.Binding("0.0.0.0", 25565)))
-                        .withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
-            } catch (Exception ex) {
-                log.error("Unable to start container for bungee " + bungeeType.getName());
-                continue;
-            }
-            //TODO: allow loop for multiple IPs
-            break;
         }
-        log.info("Finished Bungee Master Loop");
+        log.info("Finished Bungee Run");
     }
 }
