@@ -107,7 +107,7 @@ public class NodeController {
 
         try {
             log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
+            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeLoader);
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();
