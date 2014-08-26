@@ -78,7 +78,7 @@ public class NodeController {
 
         RabbitMQ rabbitMQ = null;
         try {
-            log.info("Setting up RabbitMQ "+username+" "+password);
+            log.info("Setting up RabbitMQ");
             rabbitMQ = new RabbitMQ(rabbitAddresses, username, password);
         } catch (IOException e) {
             e.printStackTrace();
@@ -107,7 +107,7 @@ public class NodeController {
 
         try {
             log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeLoader);
+            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();

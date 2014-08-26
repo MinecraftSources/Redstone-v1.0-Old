@@ -1,9 +1,12 @@
 package com.rmb938.mn2.docker.nc.slave;
 
-import com.github.dockerjava.client.DockerClient;
-import com.github.dockerjava.client.NotFoundException;
-import com.github.dockerjava.client.command.CreateContainerResponse;
-import com.github.dockerjava.client.model.*;
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.Container;
+import com.github.dockerjava.api.model.Volume;
+import com.github.dockerjava.core.DockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
 import com.mongodb.DuplicateKeyException;
 import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.database.NodeLoader;
@@ -37,7 +40,12 @@ public class SlaveLoopWorker {
         _myNodeId = node.get_id();
         this.connection = connection;
         channel = connection.createChannel();
-        connection.addShutdownListener(Throwable::printStackTrace);
+        connection.addShutdownListener(new ShutdownListener() {
+            @Override
+            public void shutdownCompleted(ShutdownSignalException e) {
+                log.error("Slave Loop Worker RabbitMQ Shutdown", e);
+            }
+        });
         consumerSetup();
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
@@ -128,7 +136,7 @@ public class SlaveLoopWorker {
 
             log.info("Checking Ram");
             int currentRamUsage = 0;
-            for (MN2Server server : serverLoader.nodeServers(node)) {
+            for (MN2Server server : serverLoader.getNodeServers(node)) {
                 currentRamUsage += server.getServerType().getMemory();
             }
 
@@ -167,7 +175,10 @@ public class SlaveLoopWorker {
             }
 
             log.info("Creating Docker Container");
-            DockerClient dockerClient = new DockerClient("http://"+node.getAddress()+":4243");
+            DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
+            config.withVersion("1.13");
+            config.withUri("http://" + node.getAddress() + ":4243");
+            DockerClient dockerClient = new DockerClientImpl(config.build());
 
             CreateContainerResponse response;
             try {

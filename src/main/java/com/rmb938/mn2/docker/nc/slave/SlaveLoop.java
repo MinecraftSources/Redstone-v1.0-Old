@@ -1,19 +1,12 @@
 package com.rmb938.mn2.docker.nc.slave;
 
-import com.github.dockerjava.client.DockerClient;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.rmb938.mn2.docker.db.database.NodeLoader;
 import com.rmb938.mn2.docker.db.database.ServerLoader;
 import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
 import com.rmb938.mn2.docker.db.entity.MN2Node;
-import com.rmb938.mn2.docker.db.entity.MN2Server;
 import com.rmb938.mn2.docker.db.entity.MN2ServerType;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import lombok.extern.log4j.Log4j2;
-import org.bson.types.ObjectId;
 
 import java.io.IOException;
 import java.util.HashMap;

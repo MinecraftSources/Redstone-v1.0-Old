@@ -1,16 +1,15 @@
 package com.rmb938.mn2.docker.nc;
 
-import com.github.dockerjava.client.DockerClient;
-import com.github.dockerjava.client.NotFoundException;
-import com.github.dockerjava.client.command.CreateContainerResponse;
-import com.github.dockerjava.client.model.*;
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.NotFoundException;
+import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.model.*;
+import com.github.dockerjava.core.DockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.MessageProperties;
+import com.rabbitmq.client.*;
 import com.rmb938.mn2.docker.db.database.*;
 import com.rmb938.mn2.docker.db.entity.*;
 import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
@@ -27,20 +26,25 @@ public class MasterLoop implements Runnable {
     private final NodeLoader nodeLoader;
     private final ServerTypeLoader serverTypeLoader;
     private final ServerLoader serverLoader;
+    private final BungeeTypeLoader bungeeTypeLoader;
     private final BungeeLoader bungeeLoader;
     private final ObjectId _myNodeId;
-    private Channel channel;
     private final Connection connection;
 
-    public MasterLoop(ObjectId _myNodeId, RabbitMQ rabbitMQ, NodeLoader nodeLoader, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, BungeeLoader bungeeLoader) throws Exception {
+    public MasterLoop(ObjectId _myNodeId, RabbitMQ rabbitMQ, NodeLoader nodeLoader, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, BungeeTypeLoader bungeeTypeLoader, BungeeLoader bungeeLoader) throws Exception {
         this.nodeLoader = nodeLoader;
         this.serverTypeLoader = serverTypeLoader;
         this.serverLoader = serverLoader;
+        this.bungeeTypeLoader = bungeeTypeLoader;
         this.bungeeLoader = bungeeLoader;
         this._myNodeId = _myNodeId;
         connection = rabbitMQ.getConnection();
-        connection.addShutdownListener(Throwable::printStackTrace);
-        channel = connection.createChannel();
+        connection.addShutdownListener(new ShutdownListener() {
+            @Override
+            public void shutdownCompleted(ShutdownSignalException e) {
+                log.error("Master Loop RabbitMQ Shutdown", e);
+            }
+        });
     }
 
     private boolean amIMaster() {
@@ -53,7 +57,9 @@ public class MasterLoop implements Runnable {
         while (true) {
             log.info("Sending Update");
             nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+            log.info("Checking Master");
             if (amIMaster()) {
+                log.info("I am Master");
                 serverRun();
                 bungeeMasterRun();
             }
@@ -79,7 +85,10 @@ public class MasterLoop implements Runnable {
             MN2Server server = serverLoader.loadEntity((ObjectId) dbObject.get("_id"));
             if (server != null) {
                 if (server.getNode() != null) {
-                    DockerClient dockerClient = new DockerClient("http://" + server.getNode().getAddress() + ":4243");
+                    DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
+                    config.withVersion("1.13");
+                    config.withUri("http://" + server.getNode().getAddress() + ":4243");
+                    DockerClient dockerClient = new DockerClientImpl(config.build());
                     boolean found = true;
                     try {
                         dockerClient.inspectContainerCmd(server.getContainerId()).exec();
@@ -126,21 +135,18 @@ public class MasterLoop implements Runnable {
         dbCursor.close();
 
         for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
+            Channel channel;
             try {
+                channel = connection.createChannel();
                 AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(serverType.get_id()+ "-server-worker");
                 int messages = declareOk.getMessageCount();
                 if (messages > 0) {
+                    log.info("Queue for "+serverType.getName()+" has build requests. Waiting...");
                     continue;
                 }
             } catch (IOException e) {
-                if (!channel.isOpen()) {
-                    try {
-                        channel = connection.createChannel();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
-                    }
-                }
                 //Queue hasn't been made yet so continue
+                log.info("Queue for "+serverType.getName()+" hasn't been created yet. Waiting...");
                 continue;
             }
 
@@ -173,7 +179,10 @@ public class MasterLoop implements Runnable {
             MN2Bungee bungee = bungeeLoader.loadEntity((ObjectId) dbObject.get("_id"));
             if (bungee != null) {
                 if (bungee.getNode() != null) {
-                    DockerClient dockerClient = new DockerClient("http://" + bungee.getNode().getAddress() + ":4243");
+                    DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
+                    config.withVersion("1.13");
+                    config.withUri("http://" + bungee.getNode().getAddress() + ":4243");
+                    DockerClient dockerClient = new DockerClientImpl(config.build());
                     boolean found = true;
                     try {
                         dockerClient.inspectContainerCmd(bungee.getContainerId()).exec();
@@ -232,7 +241,7 @@ public class MasterLoop implements Runnable {
 
         if (node.getBungeeType() != null) {
             log.info("Looking for bungee to create");
-            if (bungeeLoader.nodeBungee(node) == null) {
+            if (bungeeLoader.getNodeBungee(node) == null) {
                 MN2BungeeType bungeeType = node.getBungeeType();
                 MN2Bungee bungee = new MN2Bungee();
                 bungee.setNode(node);
@@ -247,7 +256,10 @@ public class MasterLoop implements Runnable {
                     return;
                 }
 
-                DockerClient dockerClient = new DockerClient("http://" + node.getAddress() + ":4243");
+                DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
+                config.withVersion("1.13");
+                config.withUri("http://" + node.getAddress() + ":4243");
+                DockerClient dockerClient = new DockerClientImpl(config.build());
                 CreateContainerResponse response;
                 try {
                     for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
