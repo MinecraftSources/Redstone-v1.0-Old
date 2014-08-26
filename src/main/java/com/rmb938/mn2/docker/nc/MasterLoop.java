@@ -49,7 +49,7 @@ public class MasterLoop implements Runnable {
 
     private boolean amIMaster() {
         MN2Node master = nodeLoader.getMaster();
-        return master != null && master.get_id().compareTo(_myNodeId) == 0;
+        return master != null && master.get_id().equals(_myNodeId);
     }
 
     @Override
