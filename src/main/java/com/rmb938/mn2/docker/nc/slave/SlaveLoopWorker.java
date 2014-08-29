@@ -200,8 +200,6 @@ public class SlaveLoopWorker {
                                 "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
                                 "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
                                 "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
-                                "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
-                                "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
                                 "MY_SERVER_ID=" + server.get_id().toString())
                         .withName(serverType.getName()+"."+server.getNumber())
                         .withStdinOpen(true)

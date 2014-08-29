@@ -280,8 +280,6 @@ public class MasterLoop implements Runnable {
                                     "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
                                     "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
                                     "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
-                                    "RACKSPACE_USERNAME=" + System.getenv("RACKSPACE_USERNAME"),
-                                    "RACKSPACE_API=" + System.getenv("RACKSPACE_API"),
                                     "MY_BUNGEE_ID=" + bungee.get_id().toString())
                             .withExposedPorts(new ExposedPort("tcp", 25565))
                             .withName(bungeeType.getName())
