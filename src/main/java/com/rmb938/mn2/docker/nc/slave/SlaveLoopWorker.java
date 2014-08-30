@@ -227,7 +227,7 @@ public class SlaveLoopWorker {
 
             try {
                 log.info("Starting container for "+serverType.getName()+"."+server.getNumber());
-                dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/cloudfiles", new Volume("/mnt/cloudfiles"))).exec();
+                dockerClient.startContainerCmd(containerId).withPublishAllPorts(true).withBinds(new Bind("/mnt/nfs/mn2", new Volume("/mnt/nfs/mn2"))).exec();
             } catch (Exception ex) {
                 log.error("Unable to start container for server " + serverType.getName());
                 channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
