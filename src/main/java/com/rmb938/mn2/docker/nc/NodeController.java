@@ -92,7 +92,7 @@ public class NodeController {
         ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase, pluginLoader, worldLoader);
         BungeeTypeLoader bungeeTypeLoader = new BungeeTypeLoader(mongoDatabase, pluginLoader, serverTypeLoader);
         NodeLoader nodeLoader = new NodeLoader(mongoDatabase, bungeeTypeLoader);
-        ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader);
+        ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader, new PlayerLoader(mongoDatabase, serverTypeLoader, bungeeTypeLoader));
         BungeeLoader bungeeLoader = new BungeeLoader(mongoDatabase, bungeeTypeLoader, nodeLoader);
 
         log.info("Finding Node info "+myIP);

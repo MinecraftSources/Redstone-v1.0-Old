@@ -135,6 +135,9 @@ public class MasterLoop implements Runnable {
         dbCursor.close();
 
         for (MN2ServerType serverType : serverTypeLoader.getTypes()) {
+            if (serverType.isDisabled()) {
+                continue;
+            }
             Channel channel;
             try {
                 channel = connection.createChannel();
