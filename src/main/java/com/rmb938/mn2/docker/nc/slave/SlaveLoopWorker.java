@@ -20,6 +20,7 @@ import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 
 @Log4j2
@@ -147,6 +148,16 @@ public class SlaveLoopWorker {
                 return;
             }
 
+            for (MN2Server server : serverLoader.getNodeServers(node)) {
+                if (server.getPort() == -1) {
+                    log.error("Already creating a server. Waiting...");
+                    channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                    channel.basicNack(envelope.getDeliveryTag(), false, false);
+                    return;
+                }
+            }
+
+
             log.info("Creating Server");
             MN2Server server = new MN2Server();
             server.setServerType(serverType);
@@ -174,7 +185,7 @@ public class SlaveLoopWorker {
                 return;
             }
 
-            log.info("Creating Docker Container");
+            log.info("Creating Docker Container " + serverType.getName() + "." + server.getNumber());
             DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
             config.withVersion("1.13");
             config.withUri("http://" + node.getAddress() + ":4243");
@@ -185,16 +196,16 @@ public class SlaveLoopWorker {
                 for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
                     String name = container.getNames()[0];
                     if (name.equals("/"+serverType.getName()+"."+server.getNumber())) {
+                        log.info("Deleting " + Arrays.toString(container.getNames()));
                         try {
                             dockerClient.killContainerCmd(container.getId()).exec();
                         } catch (Exception ignored) {
                         }
-                        dockerClient.removeContainerCmd(container.getId()).exec();
+                        dockerClient.removeContainerCmd(container.getId()).withForce(true).exec();
                         break;
                     }
                 }
 
-                log.info("Creating container for "+serverType.getName());
                 response = dockerClient.createContainerCmd("mnsquared/server")
                         .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
                                 "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),

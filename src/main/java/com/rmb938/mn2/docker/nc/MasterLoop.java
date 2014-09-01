@@ -55,8 +55,6 @@ public class MasterLoop implements Runnable {
     @Override
     public void run() {
         while (true) {
-            log.info("Sending Update");
-            nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", _myNodeId), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
             log.info("Checking Master");
             if (amIMaster()) {
                 log.info("I am Master");
@@ -117,7 +115,7 @@ public class MasterLoop implements Runnable {
                             } else {
                                 log.info("Remove dead server container " + server.get_id() + "." + server.getNumber());
                             }
-                            dockerClient.removeContainerCmd(server.getContainerId()).exec();
+                            dockerClient.removeContainerCmd(server.getContainerId()).withForce(true).exec();
                         } catch (Exception ex) {
                             log.error("Error removing dead server " + ex.getMessage());
                             continue;
@@ -214,7 +212,7 @@ public class MasterLoop implements Runnable {
                             } else {
                                 log.info("Remove dead bungee container " + bungee.get_id());
                             }
-                            dockerClient.removeContainerCmd(bungee.getContainerId()).exec();
+                            dockerClient.removeContainerCmd(bungee.getContainerId()).withForce(true).exec();
                         } catch (Exception ex) {
                             log.error("Error removing dead bungee " + ex.getMessage());
                             continue;
@@ -272,7 +270,7 @@ public class MasterLoop implements Runnable {
                                 dockerClient.killContainerCmd(container.getId()).exec();
                             } catch (Exception ignored) {
                             }
-                            dockerClient.removeContainerCmd(container.getId()).exec();
+                            dockerClient.removeContainerCmd(container.getId()).withForce(true).exec();
                             break;
                         }
                     }

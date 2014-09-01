@@ -106,9 +106,21 @@ public class NodeController {
         ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {
-            log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
-            executorService.submit(masterLoop);
+            log.info("Starting Heartbeat Loop");
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        log.info("Sending Update");
+                        nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", node.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+                        try {
+                            Thread.sleep(10000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -120,6 +132,21 @@ public class NodeController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        try {
+            Thread.sleep(10000 + ((int) (Math.random() * 10000)));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            log.info("Starting Master Loop");
+            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
+            executorService.submit(masterLoop);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
     }
 
