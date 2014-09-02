@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.rmb938.mn2.docker</groupId>
-    <artifactId>MN2NodeController</artifactId>
+    <groupId>io.minestack</groupId>
+    <artifactId>Carbon</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
     <distributionManagement>
@@ -115,8 +115,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.rmb938.mn2.docker</groupId>
-            <artifactId>MN2Database</artifactId>
+            <groupId>io.minestack</groupId>
+            <artifactId>Uranium</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>

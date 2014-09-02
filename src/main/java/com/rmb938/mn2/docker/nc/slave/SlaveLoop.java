@@ -1,11 +1,11 @@
 package com.rmb938.mn2.docker.nc.slave;
 
-import com.rmb938.mn2.docker.db.database.NodeLoader;
-import com.rmb938.mn2.docker.db.database.ServerLoader;
-import com.rmb938.mn2.docker.db.database.ServerTypeLoader;
-import com.rmb938.mn2.docker.db.entity.MN2Node;
-import com.rmb938.mn2.docker.db.entity.MN2ServerType;
-import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
+import io.minestack.db.database.NodeLoader;
+import io.minestack.db.database.ServerLoader;
+import io.minestack.db.database.ServerTypeLoader;
+import io.minestack.db.entity.MN2Node;
+import io.minestack.db.entity.MN2ServerType;
+import io.minestack.db.rabbitmq.RabbitMQ;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;

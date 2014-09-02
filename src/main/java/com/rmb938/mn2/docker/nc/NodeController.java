@@ -4,11 +4,11 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.ServerAddress;
 import com.rabbitmq.client.Address;
-import com.rmb938.mn2.docker.db.database.*;
-import com.rmb938.mn2.docker.db.entity.MN2Node;
-import com.rmb938.mn2.docker.db.mongo.MongoDatabase;
-import com.rmb938.mn2.docker.db.rabbitmq.RabbitMQ;
 import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
+import io.minestack.db.database.*;
+import io.minestack.db.entity.MN2Node;
+import io.minestack.db.mongo.MongoDatabase;
+import io.minestack.db.rabbitmq.RabbitMQ;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
