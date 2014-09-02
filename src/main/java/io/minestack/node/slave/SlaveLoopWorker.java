@@ -9,10 +9,10 @@ import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.mongodb.DuplicateKeyException;
 import com.rabbitmq.client.*;
-import io.minestack.db.Uranium;
-import io.minestack.db.entity.UNode;
-import io.minestack.db.entity.UServer;
-import io.minestack.db.entity.UServerType;
+import io.minestack.db.DoubleChest;
+import io.minestack.db.entity.DCNode;
+import io.minestack.db.entity.DCServer;
+import io.minestack.db.entity.DCServerType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -31,7 +31,7 @@ public class SlaveLoopWorker {
     private final ObjectId _myNodeId;
     private boolean stop = false;
 
-    public SlaveLoopWorker(UServerType serverType, ObjectId _myNodeId, Connection connection) throws Exception {
+    public SlaveLoopWorker(DCServerType serverType, ObjectId _myNodeId, Connection connection) throws Exception {
         _myServerTypeId = serverType.get_id();
         this._myNodeId = _myNodeId;
         this.connection = connection;
@@ -105,7 +105,7 @@ public class SlaveLoopWorker {
             object.put("ttl", object.getInt("ttl")-1);
 
             log.info("Setting Server Type");
-            UServerType serverType = Uranium.getServerTypeLoader().loadEntity(_myServerTypeId);
+            DCServerType serverType = DoubleChest.getServerTypeLoader().loadEntity(_myServerTypeId);
             if (serverType == null) {
                 log.error("Server Type " + _myServerTypeId + " no longer exists destroying build request");
                 channel.basicNack(envelope.getDeliveryTag(), false, false);
@@ -113,7 +113,7 @@ public class SlaveLoopWorker {
             }
 
             log.info("Getting Node");
-            UNode node = Uranium.getNodeLoader().loadEntity(_myNodeId);
+            DCNode node = DoubleChest.getNodeLoader().loadEntity(_myNodeId);
             if (node == null) {
                 log.error("Received build message but cannot find my node info");
                 channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
@@ -130,7 +130,7 @@ public class SlaveLoopWorker {
             log.info("Checking Ram");
             int currentRamUsage = 0;
 
-            for (UServer server : Uranium.getServerLoader().getNodeServers(node)) {
+            for (DCServer server : DoubleChest.getServerLoader().getNodeServers(node)) {
                 currentRamUsage += server.getServerType().getMemory();
                 if (server.getPort() == -1) {
                     log.error("Already creating a server. Waiting...");
@@ -149,14 +149,14 @@ public class SlaveLoopWorker {
 
 
             log.info("Creating Server");
-            UServer server = new UServer();
+            DCServer server = new DCServer();
             server.setServerType(serverType);
             server.setNode(node);
             server.setLastUpdate(System.currentTimeMillis()+300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
 
             try {
-                ObjectId serverId = Uranium.getServerLoader().insertEntity(server);
-                server = Uranium.getServerLoader().loadEntity(serverId);
+                ObjectId serverId = DoubleChest.getServerLoader().insertEntity(server);
+                server = DoubleChest.getServerLoader().loadEntity(serverId);
             } catch (Exception ex) {
                 if (ex instanceof DuplicateKeyException) {
                     log.error("Error inserting new server for " + serverType.getName() + " duplicate");
@@ -224,7 +224,7 @@ public class SlaveLoopWorker {
             String containerId = response.getId();
             server.setContainerId(containerId);
 
-            Uranium.getServerLoader().saveEntity(server);
+            DoubleChest.getServerLoader().saveEntity(server);
 
             try {
                 log.info("Starting container for "+serverType.getName()+"."+server.getNumber());

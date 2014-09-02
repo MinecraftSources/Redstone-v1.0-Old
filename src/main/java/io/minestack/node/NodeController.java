@@ -4,8 +4,8 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.ServerAddress;
 import com.rabbitmq.client.Address;
-import io.minestack.db.Uranium;
-import io.minestack.db.entity.UNode;
+import io.minestack.db.DoubleChest;
+import io.minestack.db.entity.DCNode;
 import io.minestack.node.master.MasterLoop;
 import io.minestack.node.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
@@ -62,7 +62,7 @@ public class NodeController {
         }
 
         try {
-            Uranium.initDatabase(mongoAddresses, rabbitAddresses, username, password);
+            DoubleChest.initDatabase(mongoAddresses, rabbitAddresses, username, password);
         } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -71,12 +71,12 @@ public class NodeController {
         String myIP = System.getenv("MY_NODE_IP");
 
         log.info("Finding Node info "+myIP);
-        DBObject dbObject = Uranium.getNodeLoader().getDb().findOne(Uranium.getNodeLoader().getCollection(), new BasicDBObject("host", myIP));
+        DBObject dbObject = DoubleChest.getNodeLoader().getDb().findOne(DoubleChest.getNodeLoader().getCollection(), new BasicDBObject("host", myIP));
         if (dbObject == null) {
             log.error("Cannot find my node info");
             return;
         }
-        UNode node = Uranium.getNodeLoader().loadEntity((ObjectId) dbObject.get("_id"));
+        DCNode node = DoubleChest.getNodeLoader().loadEntity((ObjectId) dbObject.get("_id"));
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -87,7 +87,7 @@ public class NodeController {
                 public void run() {
                     while (true) {
                         log.info("Sending Update");
-                        Uranium.getNodeLoader().getDb().updateDocument(Uranium.getNodeLoader().getCollection(), new BasicDBObject("_id", node.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+                        DoubleChest.getNodeLoader().getDb().updateDocument(DoubleChest.getNodeLoader().getCollection(), new BasicDBObject("_id", node.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
                         try {
                             Thread.sleep(10000);
                         } catch (InterruptedException e) {

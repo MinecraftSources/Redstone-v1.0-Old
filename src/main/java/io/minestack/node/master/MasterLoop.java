@@ -10,7 +10,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.rabbitmq.client.*;
-import io.minestack.db.Uranium;
+import io.minestack.db.DoubleChest;
 import io.minestack.db.entity.*;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
@@ -27,7 +27,7 @@ public class MasterLoop implements Runnable {
 
     public MasterLoop(ObjectId _myNodeId) throws Exception {
         this._myNodeId = _myNodeId;
-        connection = Uranium.getRabbitMQ().getConnection();
+        connection = DoubleChest.getRabbitMQ().getConnection();
         connection.addShutdownListener(new ShutdownListener() {
             @Override
             public void shutdownCompleted(ShutdownSignalException e) {
@@ -37,7 +37,7 @@ public class MasterLoop implements Runnable {
     }
 
     private boolean amIMaster() {
-        UNode master = Uranium.getNodeLoader().getMaster();
+        DCNode master = DoubleChest.getNodeLoader().getMaster();
         return master != null && master.get_id().equals(_myNodeId);
     }
 
@@ -66,10 +66,10 @@ public class MasterLoop implements Runnable {
 
         DBObject query = new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000));
 
-        DBCursor dbCursor = Uranium.getServerLoader().getDb().findMany(Uranium.getServerLoader().getCollection(), query);
+        DBCursor dbCursor = DoubleChest.getServerLoader().getDb().findMany(DoubleChest.getServerLoader().getCollection(), query);
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
-            UServer server = Uranium.getServerLoader().loadEntity((ObjectId) dbObject.get("_id"));
+            DCServer server = DoubleChest.getServerLoader().loadEntity((ObjectId) dbObject.get("_id"));
             if (server != null) {
                 if (server.getNode() != null) {
                     DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
@@ -116,12 +116,12 @@ public class MasterLoop implements Runnable {
                 } else {
                     log.info("Removing dead server " + server.get_id() + "." + server.getNumber());
                 }
-                Uranium.getServerLoader().getDb().remove(Uranium.getServerLoader().getCollection(), dbObject);
+                DoubleChest.getServerLoader().getDb().remove(DoubleChest.getServerLoader().getCollection(), dbObject);
             }
         }
         dbCursor.close();
 
-        for (UServerType serverType : Uranium.getServerTypeLoader().getTypes()) {
+        for (DCServerType serverType : DoubleChest.getServerTypeLoader().getTypes()) {
             if (serverType.isDisabled()) {
                 continue;
             }
@@ -141,7 +141,7 @@ public class MasterLoop implements Runnable {
             }
 
             int amount = serverType.getAmount();
-            long current = Uranium.getServerLoader().getCount(serverType);
+            long current = DoubleChest.getServerLoader().getCount(serverType);
             if (amount > current) {
                 long needed = amount - current;
                 for (int i = 0; i < needed; i++) {
@@ -163,10 +163,10 @@ public class MasterLoop implements Runnable {
     public void bungeeMasterRun() {
         log.info("Bungee Master Run");
         log.info("Removing Dead Bungees");
-        DBCursor dbCursor = Uranium.getBungeeLoader().getDb().findMany(Uranium.getBungeeLoader().getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000)));
+        DBCursor dbCursor = DoubleChest.getBungeeLoader().getDb().findMany(DoubleChest.getBungeeLoader().getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000)));
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
-            UBungee bungee = Uranium.getBungeeLoader().loadEntity((ObjectId) dbObject.get("_id"));
+            DCBungee bungee = DoubleChest.getBungeeLoader().loadEntity((ObjectId) dbObject.get("_id"));
             if (bungee != null) {
                 if (bungee.getNode() != null) {
                     DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
@@ -214,7 +214,7 @@ public class MasterLoop implements Runnable {
                 } else {
                     log.info("Removing dead bungee " + bungee.get_id());
                 }
-                Uranium.getBungeeLoader().removeEntity(bungee);
+                DoubleChest.getBungeeLoader().removeEntity(bungee);
             }
         }
         dbCursor.close();
@@ -223,7 +223,7 @@ public class MasterLoop implements Runnable {
 
     private void bungeeRun() {
         log.info("Bungee Run");
-        UNode node = Uranium.getNodeLoader().loadEntity(_myNodeId);
+        DCNode node = DoubleChest.getNodeLoader().loadEntity(_myNodeId);
         if (node == null) {
             log.error("Cannot find my node");
             return;
@@ -231,15 +231,15 @@ public class MasterLoop implements Runnable {
 
         if (node.getBungeeType() != null) {
             log.info("Looking for bungee to create");
-            if (Uranium.getBungeeLoader().getNodeBungee(node) == null) {
-                UBungeeType bungeeType = node.getBungeeType();
-                UBungee bungee = new UBungee();
+            if (DoubleChest.getBungeeLoader().getNodeBungee(node) == null) {
+                DCBungeeType bungeeType = node.getBungeeType();
+                DCBungee bungee = new DCBungee();
                 bungee.setNode(node);
                 bungee.setBungeeType(bungeeType);
                 bungee.setLastUpdate(System.currentTimeMillis() + 300000);
 
-                ObjectId objectId = Uranium.getBungeeLoader().insertEntity(bungee);
-                bungee = Uranium.getBungeeLoader().loadEntity(objectId);
+                ObjectId objectId = DoubleChest.getBungeeLoader().insertEntity(bungee);
+                bungee = DoubleChest.getBungeeLoader().loadEntity(objectId);
 
                 if (bungee == null) {
                     log.error("Created bungee is null");
@@ -289,7 +289,7 @@ public class MasterLoop implements Runnable {
                 String containerId = response.getId();
                 bungee.setContainerId(containerId);
 
-                Uranium.getBungeeLoader().saveEntity(bungee);
+                DoubleChest.getBungeeLoader().saveEntity(bungee);
 
                 try {
                     log.info("Starting container for " + bungeeType.getName());
