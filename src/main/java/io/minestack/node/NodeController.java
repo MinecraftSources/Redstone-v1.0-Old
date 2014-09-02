@@ -1,18 +1,16 @@
-package com.rmb938.mn2.docker.nc;
+package io.minestack.node;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.ServerAddress;
 import com.rabbitmq.client.Address;
-import com.rmb938.mn2.docker.nc.slave.SlaveLoop;
-import io.minestack.db.database.*;
-import io.minestack.db.entity.MN2Node;
-import io.minestack.db.mongo.MongoDatabase;
-import io.minestack.db.rabbitmq.RabbitMQ;
+import io.minestack.db.Uranium;
+import io.minestack.db.entity.UNode;
+import io.minestack.node.master.MasterLoop;
+import io.minestack.node.slave.SlaveLoop;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 
-import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,14 +47,6 @@ public class NodeController {
             }
         }
 
-        if (mongoAddresses.isEmpty()) {
-            log.error("No valid mongo addresses");
-            return;
-        }
-
-        log.info("Setting up mongo database mn2");
-        MongoDatabase mongoDatabase = new MongoDatabase(mongoAddresses, "mn2");
-
         hosts = System.getenv("RABBITMQ_HOSTS");
         String username = System.getenv("RABBITMQ_USERNAME");
         String password = System.getenv("RABBITMQ_PASSWORD");
@@ -71,37 +61,22 @@ public class NodeController {
             }
         }
 
-        if (rabbitAddresses.isEmpty()) {
-            log.error("No valid RabbitMQ addresses");
-            return;
-        }
-
-        RabbitMQ rabbitMQ = null;
         try {
-            log.info("Setting up RabbitMQ");
-            rabbitMQ = new RabbitMQ(rabbitAddresses, username, password);
-        } catch (IOException e) {
+            Uranium.initDatabase(mongoAddresses, rabbitAddresses, username, password);
+        } catch (Exception e) {
             e.printStackTrace();
             return;
         }
 
         String myIP = System.getenv("MY_NODE_IP");
 
-        PluginLoader pluginLoader = new PluginLoader(mongoDatabase);
-        WorldLoader worldLoader = new WorldLoader(mongoDatabase);
-        ServerTypeLoader serverTypeLoader = new ServerTypeLoader(mongoDatabase, pluginLoader, worldLoader);
-        BungeeTypeLoader bungeeTypeLoader = new BungeeTypeLoader(mongoDatabase, pluginLoader, serverTypeLoader);
-        NodeLoader nodeLoader = new NodeLoader(mongoDatabase, bungeeTypeLoader);
-        ServerLoader serverLoader = new ServerLoader(mongoDatabase, nodeLoader, serverTypeLoader, new PlayerLoader(mongoDatabase, serverTypeLoader, bungeeTypeLoader));
-        BungeeLoader bungeeLoader = new BungeeLoader(mongoDatabase, bungeeTypeLoader, nodeLoader);
-
         log.info("Finding Node info "+myIP);
-        DBObject dbObject = mongoDatabase.findOne(nodeLoader.getCollection(), new BasicDBObject("host", myIP));
+        DBObject dbObject = Uranium.getNodeLoader().getDb().findOne(Uranium.getNodeLoader().getCollection(), new BasicDBObject("host", myIP));
         if (dbObject == null) {
             log.error("Cannot find my node info");
             return;
         }
-        MN2Node node = nodeLoader.loadEntity((ObjectId) dbObject.get("_id"));
+        UNode node = Uranium.getNodeLoader().loadEntity((ObjectId) dbObject.get("_id"));
 
         ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -112,7 +87,7 @@ public class NodeController {
                 public void run() {
                     while (true) {
                         log.info("Sending Update");
-                        nodeLoader.getDb().updateDocument(nodeLoader.getCollection(), new BasicDBObject("_id", node.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
+                        Uranium.getNodeLoader().getDb().updateDocument(Uranium.getNodeLoader().getCollection(), new BasicDBObject("_id", node.get_id()), new BasicDBObject("$set", new BasicDBObject("lastUpdate", System.currentTimeMillis())));
                         try {
                             Thread.sleep(10000);
                         } catch (InterruptedException e) {
@@ -127,7 +102,7 @@ public class NodeController {
 
         try {
             log.info("Starting Slave Loop");
-            SlaveLoop slaveLoop = new SlaveLoop(rabbitMQ, node, serverTypeLoader, serverLoader, nodeLoader);
+            SlaveLoop slaveLoop = new SlaveLoop(node);
             executorService.submit(slaveLoop);
         } catch (Exception e) {
             e.printStackTrace();
@@ -141,7 +116,7 @@ public class NodeController {
 
         try {
             log.info("Starting Master Loop");
-            MasterLoop masterLoop = new MasterLoop(node.get_id(), rabbitMQ, nodeLoader, serverTypeLoader, serverLoader, bungeeTypeLoader, bungeeLoader);
+            MasterLoop masterLoop = new MasterLoop(node.get_id());
             executorService.submit(masterLoop);
         } catch (Exception e) {
             e.printStackTrace();

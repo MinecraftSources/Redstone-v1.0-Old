@@ -1,4 +1,4 @@
-MN2-NodeController
+Carbon
 ==================
 
-Node Controller for MN2-Docker
+Node Controller for Minestack

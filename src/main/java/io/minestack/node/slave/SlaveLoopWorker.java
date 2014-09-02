@@ -1,4 +1,4 @@
-package com.rmb938.mn2.docker.nc.slave;
+package io.minestack.node.slave;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
@@ -9,12 +9,10 @@ import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.mongodb.DuplicateKeyException;
 import com.rabbitmq.client.*;
-import io.minestack.db.database.NodeLoader;
-import io.minestack.db.database.ServerLoader;
-import io.minestack.db.database.ServerTypeLoader;
-import io.minestack.db.entity.MN2Node;
-import io.minestack.db.entity.MN2Server;
-import io.minestack.db.entity.MN2ServerType;
+import io.minestack.db.Uranium;
+import io.minestack.db.entity.UNode;
+import io.minestack.db.entity.UServer;
+import io.minestack.db.entity.UServerType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -26,9 +24,6 @@ import java.util.HashMap;
 @Log4j2
 public class SlaveLoopWorker {
 
-    private final ServerTypeLoader serverTypeLoader;
-    private final ServerLoader serverLoader;
-    private final NodeLoader nodeLoader;
     private SlaveConsumer consumer;
     private final Connection connection;
     private Channel channel;
@@ -36,9 +31,9 @@ public class SlaveLoopWorker {
     private final ObjectId _myNodeId;
     private boolean stop = false;
 
-    public SlaveLoopWorker(MN2ServerType serverType, MN2Node node, Connection connection, ServerTypeLoader serverTypeLoader, ServerLoader serverLoader, NodeLoader nodeLoader) throws Exception {
+    public SlaveLoopWorker(UServerType serverType, ObjectId _myNodeId, Connection connection) throws Exception {
         _myServerTypeId = serverType.get_id();
-        _myNodeId = node.get_id();
+        this._myNodeId = _myNodeId;
         this.connection = connection;
         channel = connection.createChannel();
         connection.addShutdownListener(new ShutdownListener() {
@@ -48,9 +43,6 @@ public class SlaveLoopWorker {
             }
         });
         consumerSetup();
-        this.serverTypeLoader = serverTypeLoader;
-        this.serverLoader = serverLoader;
-        this.nodeLoader = nodeLoader;
     }
 
     private void consumerSetup() throws IOException {
@@ -113,7 +105,7 @@ public class SlaveLoopWorker {
             object.put("ttl", object.getInt("ttl")-1);
 
             log.info("Setting Server Type");
-            MN2ServerType serverType = serverTypeLoader.loadEntity(_myServerTypeId);
+            UServerType serverType = Uranium.getServerTypeLoader().loadEntity(_myServerTypeId);
             if (serverType == null) {
                 log.error("Server Type " + _myServerTypeId + " no longer exists destroying build request");
                 channel.basicNack(envelope.getDeliveryTag(), false, false);
@@ -121,7 +113,7 @@ public class SlaveLoopWorker {
             }
 
             log.info("Getting Node");
-            MN2Node node = nodeLoader.loadEntity(_myNodeId);
+            UNode node = Uranium.getNodeLoader().loadEntity(_myNodeId);
             if (node == null) {
                 log.error("Received build message but cannot find my node info");
                 channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
@@ -137,8 +129,15 @@ public class SlaveLoopWorker {
 
             log.info("Checking Ram");
             int currentRamUsage = 0;
-            for (MN2Server server : serverLoader.getNodeServers(node)) {
+
+            for (UServer server : Uranium.getServerLoader().getNodeServers(node)) {
                 currentRamUsage += server.getServerType().getMemory();
+                if (server.getPort() == -1) {
+                    log.error("Already creating a server. Waiting...");
+                    channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
+                    channel.basicNack(envelope.getDeliveryTag(), false, false);
+                    return;
+                }
             }
 
             if ((currentRamUsage+serverType.getMemory()) > node.getRam()) {
@@ -148,25 +147,16 @@ public class SlaveLoopWorker {
                 return;
             }
 
-            for (MN2Server server : serverLoader.getNodeServers(node)) {
-                if (server.getPort() == -1) {
-                    log.error("Already creating a server. Waiting...");
-                    channel.basicPublish("", serverType.get_id()+"-server-worker", MessageProperties.PERSISTENT_TEXT_PLAIN, object.toString().getBytes());
-                    channel.basicNack(envelope.getDeliveryTag(), false, false);
-                    return;
-                }
-            }
-
 
             log.info("Creating Server");
-            MN2Server server = new MN2Server();
+            UServer server = new UServer();
             server.setServerType(serverType);
             server.setNode(node);
             server.setLastUpdate(System.currentTimeMillis()+300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
 
             try {
-                ObjectId serverId = serverLoader.insertEntity(server);
-                server = serverLoader.loadEntity(serverId);
+                ObjectId serverId = Uranium.getServerLoader().insertEntity(server);
+                server = Uranium.getServerLoader().loadEntity(serverId);
             } catch (Exception ex) {
                 if (ex instanceof DuplicateKeyException) {
                     log.error("Error inserting new server for " + serverType.getName() + " duplicate");
@@ -234,7 +224,7 @@ public class SlaveLoopWorker {
             String containerId = response.getId();
             server.setContainerId(containerId);
 
-            serverLoader.saveEntity(server);
+            Uranium.getServerLoader().saveEntity(server);
 
             try {
                 log.info("Starting container for "+serverType.getName()+"."+server.getNumber());

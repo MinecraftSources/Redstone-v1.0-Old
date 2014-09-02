@@ -98,7 +98,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.rmb938.mn2.docker.nc.NodeController</mainClass>
+                            <mainClass>io.minestack.node.NodeController</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
