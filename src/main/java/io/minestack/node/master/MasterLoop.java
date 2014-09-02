@@ -294,7 +294,7 @@ public class MasterLoop implements Runnable {
                 try {
                     log.info("Starting container for " + bungeeType.getName());
                     dockerClient.startContainerCmd(containerId).withPortBindings(new Ports(new ExposedPort("tcp", 25565), new Ports.Binding("0.0.0.0", 25565)))
-                            .withBinds(new Bind("/mnt/nfs/mn2", new Volume("/mnt/nfs/mn2"))).exec();
+                            .withBinds(new Bind("/mnt/minestack", new Volume("/mnt/minestack"))).exec();
                 } catch (Exception ex) {
                     log.error("Unable to start container for bungee " + bungeeType.getName());
                     return;
