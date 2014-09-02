@@ -196,7 +196,7 @@ public class SlaveLoopWorker {
                     }
                 }
 
-                response = dockerClient.createContainerCmd("mnsquared/server")
+                response = dockerClient.createContainerCmd("minestack/server")
                         .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
                                 "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
                                 "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),

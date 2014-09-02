@@ -265,7 +265,7 @@ public class MasterLoop implements Runnable {
                     }
 
                     log.info("Creating container for " + bungeeType.getName());
-                    response = dockerClient.createContainerCmd("mnsquared/bungee")
+                    response = dockerClient.createContainerCmd("minestack/bungee")
                             .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
                                     "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
                                     "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
