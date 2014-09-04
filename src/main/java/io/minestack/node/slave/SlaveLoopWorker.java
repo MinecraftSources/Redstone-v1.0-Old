@@ -177,8 +177,8 @@ public class SlaveLoopWorker {
 
             log.info("Creating Docker Container " + serverType.getName() + "." + server.getNumber());
             DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
-            config.withVersion("1.13");
-            config.withUri("http://" + node.getAddress() + ":4243");
+            config.withVersion("1.14");
+            config.withUri("http://10.0.42.1:4243");
             DockerClient dockerClient = new DockerClientImpl(config.build());
 
             CreateContainerResponse response;

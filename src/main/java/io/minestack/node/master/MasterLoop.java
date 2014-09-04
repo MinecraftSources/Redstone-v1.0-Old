@@ -72,9 +72,18 @@ public class MasterLoop implements Runnable {
             DCServer server = DoubleChest.getServerLoader().loadEntity((ObjectId) dbObject.get("_id"));
             if (server != null) {
                 if (server.getNode() != null) {
+                    DCNode myNode = DoubleChest.getNodeLoader().loadEntity(_myNodeId);
+                    if (myNode == null) {
+                        log.error("Cannot find my node info");
+                        return;
+                    }
                     DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
-                    config.withVersion("1.13");
-                    config.withUri("http://" + server.getNode().getAddress() + ":4243");
+                    config.withVersion("1.14");
+                    if (myNode.get_id().equals(server.getNode().get_id())) {
+                        config.withUri("http://10.0.42.1:4243");
+                    } else {
+                        config.withUri("http://" + server.getNode().getAddress() + ":4243");
+                    }
                     DockerClient dockerClient = new DockerClientImpl(config.build());
                     boolean found = true;
                     try {
@@ -83,7 +92,7 @@ public class MasterLoop implements Runnable {
                         if (ex instanceof NotFoundException) {
                             found = false;
                         } else {
-                            log.error("Error checking if bungee container exists");
+                            log.error("Error checking if server container exists");
                             continue;
                         }
                     }
@@ -169,9 +178,18 @@ public class MasterLoop implements Runnable {
             DCBungee bungee = DoubleChest.getBungeeLoader().loadEntity((ObjectId) dbObject.get("_id"));
             if (bungee != null) {
                 if (bungee.getNode() != null) {
+                    DCNode myNode = DoubleChest.getNodeLoader().loadEntity(_myNodeId);
+                    if (myNode == null) {
+                        log.error("Cannot find my node info");
+                        return;
+                    }
                     DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
-                    config.withVersion("1.13");
-                    config.withUri("http://" + bungee.getNode().getAddress() + ":4243");
+                    config.withVersion("1.14");
+                    if (myNode.get_id().equals(bungee.getNode().get_id())) {
+                        config.withUri("http://10.0.42.1:4243");
+                    } else {
+                        config.withUri("http://" + bungee.getNode().getAddress() + ":4243");
+                    }
                     DockerClient dockerClient = new DockerClientImpl(config.build());
                     boolean found = true;
                     try {
@@ -247,8 +265,8 @@ public class MasterLoop implements Runnable {
                 }
 
                 DockerClientConfig.DockerClientConfigBuilder config = DockerClientConfig.createDefaultConfigBuilder();
-                config.withVersion("1.13");
-                config.withUri("http://" + node.getAddress() + ":4243");
+                config.withVersion("1.14");
+                config.withUri("http://10.0.42.1:4243");
                 DockerClient dockerClient = new DockerClientImpl(config.build());
                 CreateContainerResponse response;
                 try {

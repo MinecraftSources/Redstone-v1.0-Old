@@ -60,7 +60,7 @@
                         <configuration>
                             <artifactSet>
                                 <includes>
-                                    <include>com.rmb938.mn2.docker:MN2Database:*</include>
+                                    <include>io.minestack:DoubleChest:*</include>
                                     <include>org.json:json:*</include>
 
                                     <!-- Docker-Java -->
