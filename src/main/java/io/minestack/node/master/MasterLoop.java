@@ -54,9 +54,9 @@ public class MasterLoop implements Runnable {
             if (amIMaster()) {
                 log.info("I am Master");
                 serverRun();
-                bungeeMasterRun();
+                proxyMasterRun();
             }
-            bungeeRun();
+            proxyRun();
             log.info("Sleeping");
             try {
                 Thread.sleep(10000);
@@ -175,9 +175,9 @@ public class MasterLoop implements Runnable {
         log.info("Finished Server Master Run");
     }
 
-    public void bungeeMasterRun() {
-        log.info("Bungee Master Run");
-        log.info("Removing Dead Bungees");
+    public void proxyMasterRun() {
+        log.info("Proxy Master Run");
+        log.info("Removing Dead Proxies");
         DBCursor dbCursor = DoubleChest.getProxyLoader().getDb().findMany(DoubleChest.getProxyLoader().getCollection(), new BasicDBObject("lastUpdate", new BasicDBObject("$lt", System.currentTimeMillis() - 60000)));
         while (dbCursor.hasNext()) {
             DBObject dbObject = dbCursor.next();
@@ -204,49 +204,49 @@ public class MasterLoop implements Runnable {
                         if (ex instanceof NotFoundException) {
                             found = false;
                         } else {
-                            log.error("Error checking if bungee container exists");
+                            log.error("Error checking if proxy container exists");
                             continue;
                         }
                     }
                     if (found) {
                         try {
                             if (proxy.getProxyType() != null) {
-                                log.info("Killing dead bungee " + proxy.getProxyType().getName());
+                                log.info("Killing dead proxy " + proxy.getProxyType().getName());
                             } else {
-                                log.info("Killing dead bungee " + proxy.get_id());
+                                log.info("Killing dead proxy " + proxy.get_id());
                             }
                             dockerClient.killContainerCmd(proxy.getContainerId()).exec();
                         } catch (Exception ex) {
-                            log.error("Error killing dead bungee " + ex.getMessage());
+                            log.error("Error killing dead proxy " + ex.getMessage());
                         }
                         try {
                             if (proxy.getProxyType() != null) {
-                                log.info("Remove dead bungee container " + proxy.getProxyType().getName());
+                                log.info("Remove dead proxy container " + proxy.getProxyType().getName());
                             } else {
-                                log.info("Remove dead bungee container " + proxy.get_id());
+                                log.info("Remove dead proxy container " + proxy.get_id());
                             }
                             dockerClient.removeContainerCmd(proxy.getContainerId()).withForce(true).exec();
                         } catch (Exception ex) {
-                            log.error("Error removing dead bungee " + ex.getMessage());
+                            log.error("Error removing dead proxy " + ex.getMessage());
                             continue;
                         }
                     }
                 }
 
                 if (proxy.getProxyType() != null) {
-                    log.info("Removing dead bungee " + proxy.getProxyType().getName());
+                    log.info("Removing dead proxy " + proxy.getProxyType().getName());
                 } else {
-                    log.info("Removing dead bungee " + proxy.get_id());
+                    log.info("Removing dead proxy " + proxy.get_id());
                 }
                 DoubleChest.getProxyLoader().removeEntity(proxy);
             }
         }
         dbCursor.close();
-        log.info("Finished Bungee Master Run");
+        log.info("Finished Proxy Master Run");
     }
 
-    private void bungeeRun() {
-        log.info("Bungee Run");
+    private void proxyRun() {
+        log.info("Proxy Run");
         DCNode node = DoubleChest.getNodeLoader().loadEntity(_myNodeId);
         if (node == null) {
             log.error("Cannot find my node");
@@ -270,7 +270,7 @@ public class MasterLoop implements Runnable {
                 proxy = DoubleChest.getProxyLoader().loadEntity(objectId);
 
                 if (proxy == null) {
-                    log.error("Created bungee is null");
+                    log.error("Created proxy is null");
                     return;
                 }
 
@@ -299,7 +299,7 @@ public class MasterLoop implements Runnable {
                                         "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
                                         "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
                                         "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
-                                        "MY_BUNGEE_ID=" + proxy.get_id().toString())
+                                        "MY_PROXY_ID=" + proxy.get_id().toString())
                                 .withExposedPorts(new ExposedPort("tcp", 25565))
                                 .withName(proxyType.getName())
                                 .withStdinOpen(true)
@@ -307,7 +307,7 @@ public class MasterLoop implements Runnable {
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    log.error("Unable to create container for bungee " + proxyType.getName());
+                    log.error("Unable to create container for proxy " + proxyType.getName());
                     return;
                 }
 
@@ -326,11 +326,11 @@ public class MasterLoop implements Runnable {
                     dockerClient.startContainerCmd(containerId).withPortBindings(new Ports(new ExposedPort("tcp", 25565), new Ports.Binding("0.0.0.0", 25565)))
                             .withBinds(new Bind("/mnt/minestack", new Volume("/mnt/minestack"))).exec();
                 } catch (Exception ex) {
-                    log.error("Unable to start container for bungee " + proxyType.getName());
+                    log.error("Unable to start container for proxy " + proxyType.getName());
                     return;
                 }
             }
         }
-        log.info("Finished Bungee Run");
+        log.info("Finished Proxy Run");
     }
 }
