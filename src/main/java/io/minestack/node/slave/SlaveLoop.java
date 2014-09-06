@@ -38,15 +38,24 @@ public class SlaveLoop implements Runnable {
                 }
             }
 
-            DoubleChest.getServerTypeLoader().getTypes().stream().filter(serverType -> !workers.containsKey(serverType)).forEach(serverType -> {
-                try {
-                    log.info("Starting Slave Loop Worker "+serverType.getName());
-                    SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, _nodeId, connection);
-                    workers.put(serverType, slaveLoopWorker);
-                } catch (Exception e) {
-                    e.printStackTrace();
+            for (DCServerType serverType : DoubleChest.getServerTypeLoader().getTypes()) {
+                boolean has = false;
+                for (DCServerType serverType1 : workers.keySet()) {
+                    if (serverType1.get_id().equals(serverType.get_id())) {
+                        has = true;
+                        break;
+                    }
                 }
-            });
+                if (!has) {
+                    try {
+                        log.info("Starting Slave Loop Worker "+serverType.getName());
+                        SlaveLoopWorker slaveLoopWorker = new SlaveLoopWorker(serverType, _nodeId, connection);
+                        workers.put(serverType, slaveLoopWorker);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
 
             try {
                 Thread.sleep(30000);
