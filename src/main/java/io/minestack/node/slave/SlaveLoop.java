@@ -3,7 +3,7 @@ package io.minestack.node.slave;
 import com.rabbitmq.client.Connection;
 import io.minestack.db.DoubleChest;
 import io.minestack.db.entity.DCNode;
-import io.minestack.db.entity.DCServerType;
+import io.minestack.db.entity.server.DCServerType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 

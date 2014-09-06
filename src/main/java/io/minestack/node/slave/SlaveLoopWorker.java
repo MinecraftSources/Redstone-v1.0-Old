@@ -11,8 +11,10 @@ import com.mongodb.DuplicateKeyException;
 import com.rabbitmq.client.*;
 import io.minestack.db.DoubleChest;
 import io.minestack.db.entity.DCNode;
-import io.minestack.db.entity.DCServer;
-import io.minestack.db.entity.DCServerType;
+import io.minestack.db.entity.server.DCServer;
+import io.minestack.db.entity.server.DCServerType;
+import io.minestack.db.entity.server.driver.bukkit.DCBukkit;
+import io.minestack.db.entity.server.driver.bukkit.DCBukkitType;
 import lombok.extern.log4j.Log4j2;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
@@ -152,7 +154,10 @@ public class SlaveLoopWorker {
             DCServer server = new DCServer();
             server.setServerType(serverType);
             server.setNode(node);
-            server.setLastUpdate(System.currentTimeMillis()+300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
+            server.setLastUpdate(System.currentTimeMillis() + 300000);//set last update to 5 mins from now this should be way more then enough to setup the server container
+            if (serverType.getDriver() instanceof DCBukkitType) {
+                server.setDriver(new DCBukkit());
+            }
 
             try {
                 ObjectId serverId = DoubleChest.getServerLoader().insertEntity(server);
@@ -181,7 +186,7 @@ public class SlaveLoopWorker {
             config.withUri("http://10.0.42.1:4243");
             DockerClient dockerClient = new DockerClientImpl(config.build());
 
-            CreateContainerResponse response;
+            CreateContainerResponse response = null;
             try {
                 for (Container container : dockerClient.listContainersCmd().withShowAll(true).exec()) {
                     String name = container.getNames()[0];
@@ -196,15 +201,17 @@ public class SlaveLoopWorker {
                     }
                 }
 
-                response = dockerClient.createContainerCmd("minestack/server")
-                        .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
-                                "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
-                                "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
-                                "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
-                                "MY_SERVER_ID=" + server.get_id().toString())
-                        .withName(serverType.getName()+"."+server.getNumber())
-                        .withStdinOpen(true)
-                        .exec();
+                if (server.getDriver() instanceof DCBukkit) {
+                    response = dockerClient.createContainerCmd("minestack/bukkit")
+                            .withEnv("MONGO_HOSTS=" + System.getenv("MONGO_HOSTS"),
+                                    "RABBITMQ_HOSTS=" + System.getenv("RABBITMQ_HOSTS"),
+                                    "RABBITMQ_USERNAME=" + System.getenv("RABBITMQ_USERNAME"),
+                                    "RABBITMQ_PASSWORD=" + System.getenv("RABBITMQ_PASSWORD"),
+                                    "MY_SERVER_ID=" + server.get_id().toString())
+                            .withName(serverType.getName() + "." + server.getNumber())
+                            .withStdinOpen(true)
+                            .exec();
+                }
             } catch (Exception ex) {
                 ex.printStackTrace();
                 log.error("Unable to create container for server " + serverType.getName()+"."+server.getNumber());
